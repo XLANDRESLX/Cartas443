@@ -104,6 +104,184 @@ export class BoardView {
     }
   }
 
+  _vincularArrastre(nodo, origen) {
+    nodo.dataset.arrastre = '1';
+    nodo.style.touchAction = 'none';
+
+    const alInicio = (evento) => {
+      if ((this.e && this.e.ganador) || !this.acciones) return;
+      if (evento.button !== undefined && evento.button !== 0 && evento.pointerType === 'mouse') return;
+      const cartaId = (origen.tipo === 'mano' && this.acciones)
+        ? this._cartaEnMano()?.id
+        : origen.cartaId;
+      this.arrastre = {
+        pointerId: evento.pointerId,
+        origen,
+        x0: evento.clientX,
+        y0: evento.clientY,
+        activo: false,
+      };
+      try { nodo.setPointerCapture(evento.pointerId); } catch (err) { /* sin captura */ }
+      this.arrastre.nodo = nodo;
+    };
+
+    const alMover = (evento) => {
+      if (!this.arrastre || this.arrastre.pointerId !== evento.pointerId) return;
+      if (!this.arrastre.activo) {
+        const dx = evento.clientX - this.arrastre.x0;
+        const dy = evento.clientY - this.arrastre.y0;
+        if (Math.hypot(dx, dy) < 8) return;
+        this.arrastre.activo = true;
+        this._crearFantasma(nodo);
+        nodo.classList.add('arrastrada');
+        this._marcarZonasObjetivo(cartaId);
+      }
+      this._moverFantasma(evento.clientX, evento.clientY);
+      this._resaltarObjetivo(evento.clientX, evento.clientY);
+    };
+
+    const alFinal = (evento) => {
+      if (!this.arrastre || this.arrastre.pointerId !== evento.pointerId) return;
+      const fueActivo = this.arrastre.activo;
+      const a = this.arrastre;
+      this.arrastre = null;
+      this._destruirFantasma();
+      this._limpiarResaltes();
+      if (fueActivo) {
+        const destino = this._objetivoEn(evento.clientX, evento.clientY);
+        if (destino) {
+          this._soltarEn(origen, destino, evento.clientX, evento.clientY);
+        } else if (origen.tipo === 'zona') {
+          this._soltarEn(origen, { tipo: 'mano' }, evento.clientX, evento.clientY);
+        }
+      } else {
+        nodo.classList.remove('arrastrada');
+        this._emularClic(origen);
+      }
+    };
+
+    nodo.addEventListener('pointerdown', alInicio);
+    nodo.addEventListener('pointermove', alMover);
+    nodo.addEventListener('pointerup', alFinal);
+    nodo.addEventListener('pointercancel', alFinal);
+  }
+
+  _cartaEnMano() {
+    const mano = (this.e && this.e.manos && this.e.manos[this.e.soyJugador]) || [];
+    return this.seleccion ? mano.find((c) => c.id === this.seleccion) : null;
+  }
+
+  _crearFantasma(nodo) {
+    if (this.fantasma) this._destruirFantasma();
+    this.fantasma = nodo.cloneNode(true);
+    this.fantasma.className = 'carta-fantasma';
+    this.fantasma.removeAttribute('style');
+    this.fantasma.style.position = 'fixed';
+    this.fantasma.style.zIndex = '2000';
+    this.fantasma.style.left = '0px';
+    this.fantasma.style.top = '0px';
+    this.fantasma.style.pointerEvents = 'none';
+    this.fantasma.style.width = nodo.offsetWidth + 'px';
+    this.fantasma.style.height = nodo.offsetHeight + 'px';
+    document.body.appendChild(this.fantasma);
+  }
+
+  _moverFantasma(x, y) {
+    if (this.fantasma) {
+      this.fantasma.style.left = (x - (this.fantasma.offsetWidth || 0) / 2) + 'px';
+      this.fantasma.style.top = (y - (this.fantasma.offsetHeight || 0) / 2) + 'px';
+    }
+  }
+
+  _marcarZonasObjetivo(cartaId) {
+    this._zonasNodo = [];
+    const zonas = this._zonasDisponibles();
+    for (let i = 0; i < this.elZonas.children.length && i < CAPACIDADES.length; i++) {
+      const z = this.elZonas.children[i];
+      const puede = (this.zonas[i] || []).length < CAPACIDADES[i];
+      const ya = (this.zonas[i] || []).some((c) => c.id === cartaId);
+      if (puede && !ya && (zonas.size === 0 || zonas.has(i))) {
+        z.classList.add('zona-drop');
+      }
+      this._zonasNodo.push(z);
+    }
+  }
+
+  _resaltarObjetivo(x, y) {
+    if (!this._zonasNodo) return;
+    const objetivo = this._zonaEn(x, y);
+    this._zonasNodo.forEach((z) => z.classList.remove('zona-drop-activa'));
+    if (objetivo && objetivo.zona) objetivo.zona.classList.add('zona-drop-activa');
+  }
+
+  _limpiarResaltes() {
+    if (this._zonasNodo) {
+      this._zonasNodo.forEach((z) => {
+        z.classList.remove('zona-drop', 'zona-drop-activa');
+      });
+    }
+    this._zonasNodo = null;
+  }
+
+  _destruirFantasma() {
+    if (this.fantasma && this.fantasma.parentNode) {
+      this.fantasma.parentNode.removeChild(this.fantasma);
+    }
+    this.fantasma = null;
+  }
+
+  _zonaEn(x, y) {
+    const objetivo = document.elementFromPoint(x, y);
+    if (objetivo) {
+      const nodo = objetivo.closest('.zona-443');
+      if (nodo) {
+        const i = [].indexOf.call(this.elZonas.children, nodo);
+        if (i >= 0) return { zona: nodo, indice: i };
+      }
+    }
+    return null;
+  }
+
+  _esManoEn(x, y) {
+    const objetivo = document.elementFromPoint(x, y);
+    if (objetivo && objetivo.closest('#mano')) return true;
+    return false;
+  }
+
+  _objetivoEn(x, y) {
+    const zona = this._zonaEn(x, y);
+    if (zona) return { tipo: 'zona', indice: zona.indice };
+    if (this._esManoEn(x, y)) return { tipo: 'mano' };
+    return null;
+  }
+
+  _soltarEn(origen, destino, x, y) {
+    if (!this.acciones) return cutoff;
+    if (destino.tipo === 'zona') {
+      const cartaId = origen.tipo === 'mano'
+        ? (this._cartaEnMano() || {}).id
+        : origen.cartaId;
+      if (!cartaId) return;
+      const cartas = this.zonas[destino.indice] || [];
+      if (cartas.length >= CAPACIDADES[destino.indice]) return;
+      if (cartas.some((c) => c.id === cartaId)) return;
+      this.seleccion = cartaId;
+      this.acciones.seleccionarCarta(cartaId);
+      this._colocarEnZona(destino.indice, cartaId);
+    } else if (destino.tipo === 'mano' && origen.tipo === 'zona') {
+      if (this.acciones) this.acciones.sacarDeZona(origen.indice, origen.cartaId);
+    }
+  }
+
+  _emularClic(origen) {
+    if (origen.tipo === 'mano') {
+      const carta = this._cartaEnMano();
+      if (carta && this.acciones) this.acciones.seleccionarCarta(carta.id);
+    } else if (origen.tipo === 'zona') {
+      if (this.acciones) this.acciones.sacarDeZona(origen.indice, origen.cartaId);
+    }
+  }
+
   obtenerZonasIds() {
     return this.zonas.map((z) => z.map((c) => c.id));
   }
@@ -296,6 +474,7 @@ export class BoardView {
       const nodo = crearElementoCarta(carta);
       nodo.dataset.zona = String(indice);
       if (this._zonaValida(cartas)) nodo.classList.add('c-zona-bien');
+      this._vincularArrastre(nodo, { tipo: 'zona', indice, cartaId: carta.id });
       nodo.onclick = (evento) => {
         evento.stopPropagation();
         if (this.acciones) this.acciones.sacarDeZona(indice, carta.id);
@@ -368,6 +547,7 @@ export class BoardView {
         if (e.ganador) return;
         if (this.acciones) this.acciones.seleccionarCarta(carta.id);
       };
+      this._vincularArrastre(nodo, carta, { tipo: 'mano' });
       this.elMano.appendChild(nodo);
     });
 
