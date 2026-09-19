@@ -84,6 +84,7 @@ export class BoardView {
   seleccionarCarta(id) {
     this.seleccion = this.seleccion === id ? null : id;
     if (this.e) {
+      if (this._enDecidir(this.e)) this._renderZonas();
       this._renderMano();
       this._renderAcciones();
     }
