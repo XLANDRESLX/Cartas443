@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4-4-3 · Juego de Cartas P2P</title>
+  <meta name="description" content="Juego de cartas colombiano 4-4-3 multijugador P2P con PeerJS.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950 min-h-screen text-amber-50 font-sans">
+  <div id="app" class="max-w-6xl mx-auto min-h-screen flex flex-col px-3 py-3">
+    <header class="flex items-center justify-between gap-2 mb-3">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-amber-500 text-emerald-950 grid place-items-center text-xl font-black shadow-lg">4</div>
+        <div>
+          <h1 class="text-lg sm:text-2xl font-black tracking-widest text-amber-300">4-4-3</h1>
+          <p class="text-[10px] sm:text-xs text-emerald-200/70 -mt-1">Juego colombiano · P2P WebRTC</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="chip-sala" class="hidden text-xs font-mono px-2 py-1 rounded-lg bg-black/40 border border-amber-400/40 text-amber-200"></span>
+        <button id="btn-sonido" class="text-lg px-2 py-1 rounded-lg bg-black/30 hover:bg-black/50 transition" title="Activar o silenciar sonido">🔊</button>
+      </div>
+    </header>
+
+    <main id="tablero" class="flex-1 rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 shadow-[inset_0_0_60px_rgba(0,0,0,.5)] border-4 border-emerald-950/60 p-3 sm:p-5 flex flex-col gap-3">
+      <div id="zona-oponente" class="flex items-center justify-center gap-3"></div>
+      <div id="zona-centro" class="flex items-center justify-center gap-6 sm:gap-10 py-2">
+        <div id="zona-mazo" class="flex flex-col items-center gap-1">
+          <div id="btn-mazo" class="cursor-pointer transition-transform hover:scale-105">
+            <div class="pila-mazo relative"></div>
+          </div>
+          <span id="lbl-mazo" class="text-xs bg-black/40 rounded-full px-2 py-0.5"></span>
+        </div>
+        <div id="zona-indicador" class="flex flex-col items-center gap-1">
+          <div id="globo-turno" class="text-center text-sm sm:text-base font-bold bg-black/40 rounded-2xl px-4 py-2 min-w-[10rem] shadow-lg"></div>
+          <div id="estado-juego" class="text-[11px] text-emerald-200/70"></div>
+        </div>
+        <div id="zona-descarte" class="flex flex-col items-center gap-1">
+          <div id="btn-descarte" class="cursor-pointer transition-transform hover:scale-105">
+            <div id="pila-descarte" class="relative"></div>
+          </div>
+          <span id="lbl-descarte" class="text-xs bg-black/40 rounded-full px-2 py-0.5"></span>
+        </div>
+      </div>
+      <div id="zonas-443" class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 min-h-0"></div>
+      <div id="zona-mano" class="flex flex-col items-center gap-2 min-h-0">
+        <div id="mano" class="flex relative min-h-16"></div>
+        <div id="barra-acciones" class="flex flex-wrap items-center justify-center gap-2 min-h-10"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="overlay-inicio" class="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/95 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md bg-emerald-900/80 border border-amber-400/30 rounded-3xl p-8 shadow-2xl text-center">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500 text-emerald-950 grid place-items-center text-3xl font-black shadow-xl rotate-3">4</div>
+      <h2 class="text-3xl font-black tracking-widest text-amber-300 mb-1">4-4-3</h2>
+      <p class="text-sm text-emerald-200/80 mb-6">El clásico juego colombiano de cartas. Roba, arma tus combinaciones y canta victoria.</p>
+      <label class="block text-left text-sm font-semibold text-emerald-100 mb-1" for="input-nombre">Tu nombre</label>
+      <input id="input-nombre" type="text" maxlength="16" placeholder="Jugador"
+        class="w-full mb-4 px-4 py-2 rounded-xl bg-emerald-950/70 border border-emerald-700/60 focus:border-amber-400 outline-none text-amber-50">
+      <div class="grid gap-3">
+        <button id="btn-crear" class="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-emerald-950 font-black tracking-wider text-lg transition transform hover:scale-[1.02] shadow-xl">🎮 CREAR PARTIDA</button>
+        <button id="btn-unirse" class="w-full py-3 rounded-2xl bg-emerald-800 hover:bg-emerald-700 border border-emerald-600/60 font-bold tracking-wider text-lg transition transform hover:scale-[1.02] shadow-lg">🔗 UNIRSE A UNA SALA</button>
+      </div>
+      <button id="btn-reglas" class="mt-5 text-sm text-emerald-200/70 hover:text-amber-300 underline underline-offset-4 transition">¿Cómo se juega el 4-4-3?</button>
+      <p class="mt-4 text-[10px] text-emerald-200/40">Unicaribe · Ciénaga, Magdalena · Proyecto de Electiva de Profundización</p>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

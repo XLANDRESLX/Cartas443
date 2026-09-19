@@ -1,0 +1,274 @@
+:root {
+  --carta-ancho: min(16vw, 76px);
+  --carta-alto: calc(var(--carta-ancho) * 1.42);
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ===== CARTA ===== */
+.carta {
+  width: var(--carta-ancho);
+  height: var(--carta-alto);
+  border-radius: 8px;
+  margin-left: -18px;
+  flex-shrink: 0;
+  position: relative;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  user-select: none;
+  cursor: pointer;
+}
+@media (min-width: 640px) {
+  .carta { margin-left: -28px; }
+}
+.carta:first-child { margin-left: 0; }
+.carta:hover { transform: translateY(-8px) scale(1.04); z-index: 30; }
+.carta.activa { opacity: 1; }
+
+.carta .cuerpo {
+  position: absolute;
+  inset: 2px;
+  border-radius: 7px;
+  backface-visibility: hidden;
+  perspective: 800px;
+}
+
+.carta .frente {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, #ffffff, #f1f5f9);
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 5px 6px;
+}
+
+.carta .muesca {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px #ffffff;
+  pointer-events: none;
+}
+
+.carta .esquina {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-weight: 800;
+}
+.carta .esquina.inferior { transform: rotate(180deg); }
+.carta .palo-centro {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: calc(var(--carta-ancho) * 0.78);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.palo-negro { color: #1e293b; }
+.palo-rojo { color: #dc2626; }
+
+.carta .dorso {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.13) 0 6px, rgba(0,0,0,0.13) 6px 12px),
+    linear-gradient(135deg, #7f1d1d, #991b1b);
+  box-shadow: inset 0 0 0 2px #fbbf24, inset 0 0 0 4px #7f1d1d, 0 4px 10px rgba(0,0,0,0.4);
+}
+.carta .dorso::before {
+  content: "443";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,0.85);
+  font-weight: 900;
+  letter-spacing: 2px;
+  font-size: calc(var(--carta-ancho) * 0.32);
+}
+
+.carta.seleccionada {
+  transform: translateY(-16px) scale(1.08);
+  box-shadow: 0 0 0 4px #fbbf24, 0 12px 24px rgba(0,0,0,0.5);
+  z-index: 40;
+}
+.carta.seleccionada:hover { transform: translateY(-16px) scale(1.08); }
+.carta.deshabilitada { cursor: not-allowed; filter: saturate(0.4); }
+
+/* ===== PILAS (MAZO / DESCARTE) ===== */
+.pila-mazo {
+  width: calc(var(--carta-ancho) + 4px);
+  height: calc(var(--carta-alto) + 4px);
+  position: relative;
+}
+.pila-mazo::before,
+.pila-mazo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.12) 0 6px, rgba(0,0,0,0.12) 6px 12px),
+    linear-gradient(135deg, #7f1d1d, #991b1b);
+  box-shadow: inset 0 0 0 2px #fbbf24, 0 4px 10px rgba(0,0,0,0.35);
+}
+.pila-mazo::before { transform: translate(4px, 4px); }
+.pila-mazo::after { transform: translate(-3px, -3px); }
+.pila-mazo > .carta { margin: 0; position: relative; z-index: 5; }
+
+#pila-descarte {
+  width: var(--carta-ancho);
+  height: var(--carta-alto);
+}
+#pila-descarte .respaldos {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+#pila-descarte .respaldos > div {
+  flex: 1;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+#pila-descarte .respaldos > div:nth-child(1) { transform: translate(4px, 5px) rotate(4deg); }
+#pila-descarte .respaldos > div:nth-child(2) { transform: translate(-4px, 6px) rotate(-5deg); }
+#pila-descarte .carta { margin: 0; position: relative; z-index: 5; }
+
+/* ===== ZONAS 4-4-3 ===== */
+.zona-443 {
+  background: rgba(0,0,0,0.25);
+  border: 2px dashed rgba(255,255,255,0.35);
+  border-radius: 16px;
+  min-height: calc(var(--carta-alto) + 34px);
+  padding: 12px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+.zona-443 .etiqueta-zona {
+  position: absolute;
+  top: -11px;
+  left: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: #064e3b;
+  color: #fbbf24;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(251,191,36,0.4);
+}
+.zona-443 .carta { margin: 0 -12px; }
+.zona-443 .carta:first-child { margin-left: 0; }
+.zona-443 .vacio-zona {
+  color: rgba(255,255,255,0.35);
+  font-size: 12px;
+  padding: 18px 0;
+}
+.zona-443.valida {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
+  box-shadow: 0 0 18px rgba(74, 222, 128, 0.25);
+}
+.zona-443 .carta.c-zona-bien { box-shadow: 0 0 0 3px #4ade80; }
+
+/* ===== MANO ===== */
+#mano {
+  padding: 12px 10px;
+  min-height: calc(var(--carta-alto) + 28px);
+  background: rgba(0,0,0,0.18);
+  border-radius: 18px;
+  justify-content: center;
+}
+#mano.vacio::after {
+  content: "Sin cartas";
+  color: rgba(255,255,255,0.3);
+  font-size: 13px;
+}
+
+/* ===== OPCIENTE ===== */
+.ficha-jugador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 14px;
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+.ficha-jugador.es-turno {
+  border-color: #fbbf24;
+  box-shadow: 0 0 16px rgba(251,191,36,0.4);
+  transform: scale(1.04);
+  animation: pulso 1.4s ease-in-out infinite;
+}
+.ficha-jugador.ganador { border-color: #4ade80; box-shadow: 0 0 20px rgba(74,222,128,0.5); }
+.ficha-jugador .pelota {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 16px;
+  color: #064e3b;
+}
+.ficha-jugador .info { line-height: 1.15; }
+.ficha-jugador .info .nombre { font-weight: 700; font-size: 13px; }
+.ficha-jugador .info .detalle { font-size: 11px; color: rgba(255,255,255,0.55); }
+
+@keyframes pulso {
+  0%, 100% { box-shadow: 0 0 10px rgba(251,191,36,0.3); }
+  50% { box-shadow: 0 0 22px rgba(251,191,36,0.7); }
+}
+
+/* ===== GLOSARIO de acciones ===== */
+.boton-juego {
+  padding: 9px 18px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.boton-juego:hover:not(:disabled) { transform: translateY(-2px); }
+.boton-juego:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.boton-accion { background: #fbbf24; color: #064e3b; box-shadow: 0 4px 12px rgba(251,191,36,0.35); }
+.boton-estilo { background: #065f46; color: #a7f3d0; border: 1px solid rgba(167,243,208,0.3); }
+.boton-peligro { background: #b91c1c; color: #fecaca; border: 1px solid rgba(254,202,202,0.3); }
+.boton-ganador {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: #064e3b;
+  animation: pulso 1.2s ease-in-out infinite;
+  font-size: 15px;
+}
+
+@keyframes rotar {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.anim-carta-nueva { transform-origin: bottom center; }
+
+.carta-entrando {
+  animation: entrarCarta 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+}
+@keyframes entrarCarta {
+  from { opacity: 0; transform: translateY(-70px) rotate(8deg) scale(0.7); }
+  to { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+}
