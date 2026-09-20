@@ -1,8 +1,6 @@
 import { CardGameModel } from '../models/CardGameModel.js';
 
 const CAPACIDADES = [3, 4, 4];
-const ETIQUETAS_ZONAS = ['Grupo C · 3 cartas', 'Grupo A · 4 cartas', 'Grupo B · 4 cartas'];
-
 function crearElementoCarta(carta, opciones = {}) {
   const div = document.createElement('div');
   div.className = 'carta';
@@ -236,7 +234,14 @@ export class BoardView {
       const nodo = objetivo.closest('.zona-443');
       if (nodo) {
         const i = [].indexOf.call(this.elZonas.children, nodo);
-        if (i >= 0) return { zona: nodo, indice: i };
+        if (i >= 0) {
+          const cartaNodo = objetivo.closest('.carta');
+          return {
+            zona: nodo,
+            indice: i,
+            cartaId: (cartaNodo && cartaNodo.dataset && cartaNodo.dataset.cartaId) || null,
+          };
+        }
       }
     }
     return null;
@@ -256,7 +261,16 @@ export class BoardView {
   }
 
   _soltarEn(origen, destino, x, y) {
-    if (!this.acciones) return cutoff;
+    if (!this.acciones) return;
+    // Intercambio: soltar sobre una carta ya colocada → se cambian de lugar
+    if (destino.tipo === 'zona' && destino.cartaId) {
+      const cartaId = origen.tipo === 'mano'
+        ? (this._cartaEnMano() || {}).id
+        : origen.cartaId;
+      if (!cartaId || cartaId === destino.cartaId) return;
+      this._intercambiar(origen, destino, cartaId);
+      return;
+    }
     if (destino.tipo === 'zona') {
       const cartaId = origen.tipo === 'mano'
         ? (this._cartaEnMano() || {}).id
@@ -266,10 +280,35 @@ export class BoardView {
       if (cartas.length >= CAPACIDADES[destino.indice]) return;
       if (cartas.some((c) => c.id === cartaId)) return;
       this.seleccion = cartaId;
-      this.acciones.seleccionarCarta(cartaId);
+      if (this.acciones) this.acciones.seleccionarCarta(cartaId);
       this._colocarEnZona(destino.indice, cartaId);
     } else if (destino.tipo === 'mano' && origen.tipo === 'zona') {
       if (this.acciones) this.acciones.sacarDeZona(origen.indice, origen.cartaId);
+    }
+  }
+
+  _intercambiar(origen, destino, cartaId) {
+    const cartasDest = this.zonas[destino.indice] || [];
+    const posDest = cartasDest.findIndex((c) => c.id === destino.cartaId);
+    if (posDest === -1) return;
+    const cartaDest = this.zonas[destino.indice][posDest];
+
+    if (origen.tipo === 'mano') {
+      // Quito la carta destino de la zona (vuelve a la mano) y pongo la arrastrada en su lugar
+      if (this.acciones) this.acciones.sacarDeZona(destino.indice, cartaDest.id);
+      this._colocarEnZona(destino.indice, cartaId);
+    } else if (origen.tipo === 'zona' && origen.indice !== destino.indice) {
+      // Intercambio entre dos zonas
+      const cartasOrig = this.zonas[origen.indice] || [];
+      const posOrig = cartasOrig.findIndex((c) => c.id === origen.cartaId);
+      if (posOrig === -1) return;
+      this.zonas[destino.indice][posDest] = cartasOrig[posOrig];
+      this.zonas[origen.indice][posOrig] = cartaDest;
+      if (this.e) {
+        this._renderZonas();
+        this._renderMano();
+        this._renderAcciones();
+      }
     }
   }
 
@@ -300,7 +339,7 @@ export class BoardView {
     const ids = new Set(mano.map((c) => c.id));
     if (ids.size !== this._ultimaManoIds.size) {
       this._ultimaManoIds = ids;
-      this._limpiarZonas();
+      // Los grupos se conservan: el jugador decide si reorganizarlos o no.
     } else {
       let cambio = false;
       for (const id of ids) {
@@ -308,7 +347,6 @@ export class BoardView {
       }
       if (cambio) {
         this._ultimaManoIds = ids;
-        this._limpiarZonas();
       }
     }
   }
@@ -458,11 +496,6 @@ export class BoardView {
     const capacidad = CAPACIDADES[indice];
     const cartas = this.zonas[indice] || [];
 
-    const etiqueta = document.createElement('span');
-    etiqueta.className = 'etiqueta-zona';
-    etiqueta.textContent = ETIQUETAS_ZONAS[indice];
-    zona.appendChild(etiqueta);
-
     if (cartas.length === 0) {
       const vacio = document.createElement('div');
       vacio.className = 'vacio-zona';
@@ -516,14 +549,6 @@ export class BoardView {
     for (let i = 0; i < CAPACIDADES.length; i++) {
       this.elZonas.appendChild(this._buildZona(i));
     }
-
-    const enZonas = new Set(this.zonas.flat().map((c) => c.id));
-    const mano = this.e.manos[this.e.soyJugador] || [];
-    const colocadas = mano.filter((c) => enZonas.has(c.id)).length;
-    const pie = document.createElement('div');
-    pie.className = 'zona-443 col-span-full text-center';
-    pie.innerHTML = `<span class="etiqueta-zona">Progreso</span><div class="vacio-zona" style="padding:8px">${colocadas}/11 cartas organizadas</div>`;
-    this.elZonas.appendChild(pie);
   }
 
   _renderMano() {
