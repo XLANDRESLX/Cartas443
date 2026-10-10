@@ -152,16 +152,73 @@ export class UIControlsView {
     }
   }
 
-  esperandoConexion(codigo) {
+  esperandoConexion(codigo, mensaje) {
     const swal = this._swal();
     if (!swal) return null;
+    this._reconexionAbierta = true;
     return swal.fire({
       title: 'Conectando…',
-      text: `Buscando la sala ${codigo}`,
+      text: mensaje || `Buscando la sala ${codigo}`,
       allowOutsideClick: false,
       allowEscapeKey: false,
       didOpen: () => { swal.showLoading(); },
     });
+  }
+
+  mostrarReconexion(mensaje) {
+    const swal = this._swal();
+    if (!swal) return;
+    this._reconexionAbierta = true;
+    swal.fire({
+      title: 'Conexión inestable',
+      text: mensaje || 'Reintentando conectar con la sala…',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => { swal.showLoading(); },
+    });
+  }
+
+  cerrarModalReconexion() {
+    const swal = this._swal();
+    const estaba = this._reconexionAbierta;
+    this._reconexionAbierta = false;
+    if (!swal || !estaba || !swal.isVisible()) return;
+    const titulo = swal.getTitle && swal.getTitle();
+    const texto = (titulo && titulo.textContent) || '';
+    if (/Conexión inestable|Conectando/.test(texto)) swal.close();
+  }
+
+  mostrarJugadorDesconectado({ nombre, segundos, alSalir } = {}) {
+    const swal = this._swal();
+    if (!swal) return;
+    this._desconectadoAbierto = true;
+    const texto = segundos
+      ? `Se esperará a que vuelva. Si no responde en ${segundos} s, saldrá de la partida.`
+      : 'Esperando a que vuelva a conectarse…';
+    swal.fire({
+      icon: 'warning',
+      title: `${nombre} se desconectó`,
+      text: texto,
+      showCancelButton: true,
+      showConfirmButton: false,
+      cancelButtonText: 'Salir de la sala',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    }).then((r) => {
+      if (r && r.dismiss === swal.DismissReason.cancel) {
+        if (alSalir) alSalir();
+      }
+    });
+  }
+
+  cerrarModalDesconectado() {
+    const swal = this._swal();
+    const estaba = this._desconectadoAbierto;
+    this._desconectadoAbierto = false;
+    if (!swal || !estaba || !swal.isVisible()) return;
+    const titulo = swal.getTitle && swal.getTitle();
+    const texto = (titulo && titulo.textContent) || '';
+    if (/se desconectó/.test(texto)) swal.close();
   }
 
   alerta(titulo, texto) {
@@ -193,9 +250,9 @@ export class UIControlsView {
       html: [
         `<div class="flex flex-col items-center gap-2">`,
         `<div class="w-14 h-14 rounded-full grid place-items-center text-2xl font-black text-emerald-950" style="background:${color}">${numero}</div>`,
-        `<p class="text-slate-200">🎉 ¡Felicidades, ${nombreJugador}! Organizaste tus 11 cartas en:</p>`,
+        `<p class="text-slate-700">🎉 ¡Felicidades, ${nombreJugador}! Organizaste tus 11 cartas en:</p>`,
         `<div class="text-left text-sm space-y-1 w-full max-w-xs">`,
-        ...(descripcion || []).map((d) => `<div class="bg-slate-800 rounded-lg px-3 py-2 text-emerald-300">${porTipo(d)}</div>`),
+        ...(descripcion || []).map((d) => `<div class="bg-slate-100 rounded-lg px-3 py-2 text-emerald-700">${porTipo(d)}</div>`),
         `</div>`,
         `</div>`,
       ].join(''),
@@ -238,15 +295,14 @@ export class UIControlsView {
         '<div class="text-left text-sm space-y-2 max-h-72 overflow-y-auto pr-2">',
         '<p><b>1.</b> Cada jugador recibe <b>10 cartas</b>. El resto forma el mazo y se voltea una carta al descarte.</p>',
         '<p><b>2.</b> En tu turno debes <b>robar 1 carta</b> (del mazo o del pozo de descarte), quedando con 11 cartas.</p>',
-        '<p><b>3.</b> Intenta <b>organizar tus 11 cartas</b> en las 3 combinaciones exigidas:</p>',
+        '<p><b>3.</b> Ganas si tus 11 cartas forman un <b>4-4-3</b>: tres grupos de 4, 4 y 3 cartas <b>del mismo número</b> (en cualquier orden: 4-4-3, 4-3-4 o 3-4-4).</p>',
         '<ul class="list-disc pl-5">',
-        '<li><b>Grupo A (4 cartas):</b> trío o cuarteto del mismo número, o escalera de 4 del mismo palo.</li>',
-        '<li><b>Grupo B (4 cartas):</b> igual que el Grupo A.</li>',
-        '<li><b>Grupo C (3 cartas):</b> trío del mismo número o escalera de 3 del mismo palo.</li>',
+        '<li><b>Grupo de 4:</b> cuatro cartas del mismo número.</li>',
+        '<li><b>Grupo de 3:</b> tres cartas del mismo número.</li>',
+        '<li>El <b>palo</b> (♠ ♥ ♦ ♣) no importa.</li>',
         '</ul>',
-        '<p><b>4.</b> Si logras armar las 3 combinaciones, presiona <b>👑 Cantar 4-4-3</b> y ganas.</p>',
+        '<p><b>4.</b> El sistema revisa tu mano sola: si forma el 4-4-3 se habilita <b>👑 Cantar 4-4-3</b>. Púlsalo y ganas.</p>',
         '<p><b>5.</b> Si no la armas, debes <b>botar 1 carta</b> al descarte y ceder el turno.</p>',
-        '<p><b>Nota:</b> En un grupo de 4 cartas también se acepta un trío acompañado de una carta libre.</p>',
         '</div>',
       ].join(''),
       confirmButtonText: '¡A jugar!',
@@ -263,6 +319,20 @@ export class UIControlsView {
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Sí, repartir',
+      cancelButtonText: 'Cancelar',
+      allowOutsideClick: false,
+    });
+  }
+
+  confirmarSalir() {
+    const swal = this._swal();
+    if (!swal) return null;
+    return swal.fire({
+      title: '¿Salir de la partida?',
+      text: 'Volverás a la pantalla de inicio y abandonarás la sala.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, salir',
       cancelButtonText: 'Cancelar',
       allowOutsideClick: false,
     });

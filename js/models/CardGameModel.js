@@ -1,4 +1,4 @@
-import { crearBaraja } from './Card.js';
+import { Card, crearBaraja } from './Card.js';
 
 export const CARTAS_POR_JUGADOR = 10;
 export const MIN_JUGADORES = 2;
@@ -60,7 +60,53 @@ export class CardGameModel {
   }
 
   _siguienteTurno(jugador) {
-    return (jugador % this.numJugadores) + 1;
+    // Cicla solo entre los números que aún están en la partida (manos activas).
+    const activos = Object.keys(this.manos).map(Number).sort((a, b) => a - b);
+    if (activos.length === 0) return jugador;
+    const mayor = activos.find((n) => n > jugador);
+    return mayor !== undefined ? mayor : activos[0];
+  }
+
+  quitarJugador(numero) {
+    // Un jugador abandonó: se retira su mano y, si era su turno, pasa al siguiente activo.
+    if (!this.manos[numero]) return;
+    const eraSuTurno = this.turno === numero;
+    delete this.manos[numero];
+    if (eraSuTurno) this.turno = this._siguienteTurno(numero);
+  }
+
+  toJSON() {
+    return {
+      numJugadores: this.numJugadores,
+      mazo: this.mazo.map((c) => c.toJSON()),
+      descarte: this.descarte.map((c) => c.toJSON()),
+      manos: Object.fromEntries(
+        Object.entries(this.manos).map(([k, v]) => [k, v.map((c) => c.toJSON())])
+      ),
+      turno: this.turno,
+      fase: this.fase,
+      ganador: this.ganador,
+      ultimoEvento: this.ultimoEvento,
+      nuevasCartas: this.nuevasCartas.map((c) => c.toJSON()),
+    };
+  }
+
+  static fromJSON(datos) {
+    if (!datos) return null;
+    const modelo = Object.create(CardGameModel.prototype);
+    modelo.numJugadores = datos.numJugadores || MIN_JUGADORES;
+    modelo.mazo = (datos.mazo || []).map((c) => Card.fromJSON(c));
+    modelo.descarte = (datos.descarte || []).map((c) => Card.fromJSON(c));
+    modelo.manos = {};
+    for (const [k, v] of Object.entries(datos.manos || {})) {
+      modelo.manos[k] = (v || []).map((c) => Card.fromJSON(c));
+    }
+    modelo.turno = datos.turno || 1;
+    modelo.fase = datos.fase || 'robar';
+    modelo.ganador = datos.ganador != null ? datos.ganador : null;
+    modelo.ultimoEvento = datos.ultimoEvento || null;
+    modelo.nuevasCartas = (datos.nuevasCartas || []).map((c) => Card.fromJSON(c));
+    return modelo;
   }
 
   _manoAtope(jugador) {
@@ -123,9 +169,9 @@ export class CardGameModel {
     return carta;
   }
 
-  cantar443(jugador, zonas) {
+  cantar443(jugador) {
     if (this.fase !== 'decidir') return false;
-    const puede = CardGameModel.validarZonas(this.manos[jugador], zonas);
+    const puede = CardGameModel.validar443(this.manos[jugador]);
     if (puede) {
       this.ganador = jugador;
       this.fase = 'fin';
@@ -140,30 +186,10 @@ export class CardGameModel {
 
   static validarGrupo(cartas) {
     if (!Array.isArray(cartas)) return false;
-    const n = cartas.length;
-    if (n === 0) return false;
-
-    const valores = cartas.map((c) => c.valor);
-    const paloUnico = cartas.every((c) => c.palo === cartas[0].palo);
-
-    const conjuntoValido = valores.every((v) => v === valores[0]);
-    const conteo = {};
-    valores.forEach((v) => { conteo[v] = (conteo[v] || 0) + 1; });
-    const maxRepetidos = Math.max(...Object.values(conteo));
-
-    const escaleraValida = paloUnico && (() => {
-      const orden = [...valores].sort((a, b) => a - b);
-      for (let i = 1; i < orden.length; i++) {
-        if (orden[i] !== orden[i - 1] + 1) return false;
-      }
-      return true;
-    })();
-
-    if (conjuntoValido || escaleraValida) return true;
-
-    if (n === 4 && maxRepetidos >= 3 && !escaleraValida) return true;
-
-    return false;
+    if (cartas.length === 0) return false;
+    // Solo se mira el número: todas las cartas deben compartir el mismo valor.
+    // El palo (símbolo) no importa.
+    return cartas.every((c) => c.valor === cartas[0].valor);
   }
 
   static combinaciones(indices, k) {
@@ -190,28 +216,6 @@ export class CardGameModel {
 
     generar(0, []);
     return resultados;
-  }
-
-  static validarZonas(mano, zonas) {
-    if (!Array.isArray(zonas) || zonas.length !== 3) return false;
-    const tamaños = zonas.map((z) => z.length);
-    if (JSON.stringify(tamaños) !== '[3,4,4]') return false;
-
-    const enMano = new Set(mano.map((c) => c.id));
-    const usadas = new Set();
-    for (const zona of zonas) {
-      const cartas = [];
-      for (const carta of zona) {
-        const tmp = typeof carta === 'string' ? { id: carta } : carta;
-        if (!enMano.has(tmp.id)) return false;
-        if (usadas.has(tmp.id)) return false;
-        usadas.add(tmp.id);
-        cartas.push(typeof carta === 'string' ? mano.find((c) => c.id === carta) : carta);
-      }
-      if (!CardGameModel.validarGrupo(cartas)) return false;
-    }
-
-    return usadas.size === mano.length;
   }
 
   static validar443(mano) {
@@ -270,29 +274,8 @@ export class CardGameModel {
   }
 
   static describirGrupo(grupo) {
-    const valoresConsecutivos = [...grupo]
-      .map((c) => c.valor)
-      .sort((a, b) => a - b)
-      .every((v, i, arr) => i === 0 || v === arr[i - 1] + 1);
-    const paloUnico = grupo.every((c) => c.palo === grupo[0].palo);
-    const mismoValor = grupo.every((c) => c.valor === grupo[0].valor);
-
-    if (valoresConsecutivos && paloUnico && (grupo.length === 3 || grupo.length === 4)) {
-      const etiquetas = [...grupo]
-        .sort((a, b) => a.valor - b.valor)
-        .map((c) => `${c.nombre}${c.simbolo}`)
-        .join(' · ');
-      return `Escalera: ${etiquetas}`;
-    }
-
-    if (mismoValor && (grupo.length === 3 || grupo.length === 4)) {
-      return `${grupo.length === 3 ? 'Trío' : 'Cuarteto'} de ${grupo[0].nombre} (${grupo[0].simbolo})`;
-    }
-
-    const conteo = {};
-    grupo.forEach((c) => { conteo[c.valor] = (conteo[c.valor] || 0) + 1; });
-    const [valor, cantidad] = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0];
-    const cartaRef = grupo.find((c) => c.valor === Number(valor)) || grupo[0];
-    return `${cantidad} cartas de ${cartaRef.nombre} (${cartaRef.simbolo})`;
+    if (!Array.isArray(grupo) || grupo.length === 0) return '';
+    const etiqueta = grupo.length === 4 ? 'Cuarteto' : grupo.length === 3 ? 'Trío' : 'Grupo';
+    return `${etiqueta} de ${grupo[0].nombre}`;
   }
 }

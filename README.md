@@ -7,11 +7,8 @@ Juego de cartas colombiano **4-4-3** multijugador en línea (P2P via WebRTC con 
 - Cada jugador recibe **10 cartas**. El mazo tiene **104 cartas** (2 copias de cada una de las 52 cartas: 4 palos × 13 valores). El resto forma el mazo y se voltea una carta al descarte.
 - El turno inicial se elige al azar. Se juega por turnos entre **2 y 4 jugadores**.
 - En tu turno debes **robar 1 carta** (del mazo o del pozo de descarte), quedando con **11 cartas**.
-- Con tus 11 cartas debes **organizar 3 grupos**:
-  - **Grupo C (3 cartas):** trío del mismo número o escalera de 3 del mismo palo.
-  - **Grupo A (4 cartas):** trío o cuarteto del mismo número, o escalera de 4 del mismo palo (también se acepta un trío acompañado de una carta libre).
-  - **Grupo B (4 cartas):** igual que el Grupo A.
-- Organiza tu mano a gusto: **arrastra las cartas** para insertarlas donde quieras, haz **clic** para seleccionar, o usa las herramientas **🔢 Valor**, **♠️ Palo**, **♠️🔢 Ambos** y **↩️ Deshacer**. Este orden es **privado** (solo tú lo ves) y se guarda en tu dispositivo.
+- Con tus 11 cartas debes formar un **4-4-3**: tres grupos **de 4, 4 y 3 cartas del mismo número** (en cualquier orden: 4-4-3, 4-3-4 o 3-4-4). El **palo** (♠ ♥ ♦ ♣) **no importa**.
+- Organiza tu mano a gusto: **arrastra las cartas** para reordenarlas, haz **clic** para seleccionar, o usa las herramientas **🔢 Valor**, **♠️ Palo**, **♠️🔢 Ambos** y **↩️ Deshacer**. Este orden es **privado** (solo tú lo ves).
 - Si logras armar las 3 combinaciones presiona **👑 Cantar 4-4-3** y ganas la partida.
 - Si no puedes, **bota 1 carta** al descarte y cede el turno.
 - Si el mazo y el descarte se agotan sin que nadie cante, la partida termina en **empate** y se reparte de nuevo.
@@ -26,6 +23,13 @@ Juego de cartas colombiano **4-4-3** multijugador en línea (P2P via WebRTC con 
 - Mientras se espera, la **sala de espera** muestra el código y la lista de jugadores; el host habilita **Iniciar partida** en cuanto hay al menos 2 conectados.
 - El aforo es de **4 jugadores**; las conexiones extra se rechazan automáticamente.
 
+## Conexión, reconexión y salir
+
+- **Reanudar sesión**: si recargas la página (por accidente o al volver), la partida se restaura automáticamente durante **5 minutos**. El anfitrión recupera su sala y los invitados se reconectan sin perder su mano.
+- **Anfitrión que se cae**: si se pierde la conexión con el anfitrión, los invitados reintentan reconectar; si no vuelve en **15 segundos**, el invitado de menor número **asume como nuevo anfitrión** y la partida continúa.
+- **Jugador desconectado**: si alguien se desconecta en partida aparece el aviso «{nombre} se desconectó» con una espera de 15 s; al reincorporarse el aviso desaparece y, si no vuelve, sale de la partida (los números restantes se reasignan).
+- **Salir de la partida**: el botón **← Salir** en la mesa pide confirmación, avisa a los demás y devuelve a la pantalla de inicio.
+
 ## Tecnologías
 
 - Vanilla JavaScript (ES Modules, arquitectura MVC).
@@ -38,13 +42,13 @@ Juego de cartas colombiano **4-4-3** multijugador en línea (P2P via WebRTC con 
 
 ```
 index.html                 Punto de entrada: pantallas de inicio, lobby, mesa y sala de espera
-css/styles.css             Estilos (cartas, mesa, asientos, zonas, overlay de espera)
+css/styles.css             Estilos (cartas, mesa, asientos, overlay de espera)
 js/main.js                 Arranque, navegación de pantallas y salas recientes (localStorage)
-js/controllers/GameController.js  Mediador host-autoritativo (sala, turnos, reinicio)
+js/controllers/GameController.js  Mediador host-autoritativo (sala, turnos, reinicio, reconexión y migración de anfitrión)
 js/models/Card.js          Definición de carta y baraja
-js/models/CardGameModel.js Lógica del juego (2-4 jugadores) y validación 4-4-3
+js/models/CardGameModel.js Lógica del juego (2-4 jugadores), validación 4-4-3 y serialización
 js/network/PeerNetwork.js  Capa P2P (PeerJS), salas de hasta 4 jugadores
-js/views/BoardView.js      Render de mesa, asientos, mano y zonas; orden manual
+js/views/BoardView.js      Render de mesa, asientos y mano; reorden manual
 js/views/UIControlsView.js Overlay de sala de espera, modales y toasts (SweetAlert2)
 js/views/AudioView.js      Efectos de sonido (Web Audio)
 assets/                    Carpetas de recursos (cards, sounds, img)

@@ -57,6 +57,23 @@ document.addEventListener('DOMContentLoaded', () => {
     mostrarInicio();
   };
 
+  // ===== REANUDAR SESIÓN (recarga / reconexión) =====
+  const sesionGuardada = control.leerSesion();
+  if (sesionGuardada) {
+    if (inputNombre && sesionGuardada.nombre) inputNombre.value = sesionGuardada.nombre;
+    mostrarMesa();
+    control.reanudarSesion(sesionGuardada).then((ok) => {
+      if (!ok) mostrarInicio();
+    }).catch(() => {
+      mostrarInicio();
+    });
+  }
+
+  const btnSalirPartida = document.getElementById('btn-salir-partida');
+  if (btnSalirPartida) {
+    btnSalirPartida.addEventListener('click', () => control.salir());
+  }
+
   // ===== PANTALLA DE INICIO =====
   document.getElementById('btn-jugar').addEventListener('click', () => {
     const nombre = nombrePorDefecto();
