@@ -1,9 +1,11 @@
-import { CardGameModel } from '../models/CardGameModel.js';
+import { CardGameModel, MIN_JUGADORES, MAX_JUGADORES } from '../models/CardGameModel.js';
 import { Card } from '../models/Card.js';
 import { PeerNetwork } from '../network/PeerNetwork.js';
 import { UIControlsView } from '../views/UIControlsView.js';
 import { BoardView } from '../views/BoardView.js';
 import { AudioView } from '../views/AudioView.js';
+
+const COLORES = ['#fbbf24', '#38bdf8', '#f472b6', '#a3e635'];
 
 export class GameController {
   constructor() {
@@ -19,73 +21,138 @@ export class GameController {
     this.miNombre = '';
     this.enPartida = false;
     this.onSalirAlInicio = null;
-    this._nombreRival = 'Rival';
-    this._colores = { 1: '#fbbf24', 2: '#38bdf8' };
+
+    // Host: jugadores registrados
+    this.jugadores = []; // [{ clave, numero, nombre, conectado }]
+    this.turnos = null;
+
     this._ganadorNotificado = null;
     this._desconectado = false;
-    this.canalHost = null;
 
     this.vista.configurarAcciones({
       robarMazo: () => this._pedirAccion('robarMazo'),
       robarDescarte: () => this._pedirAccion('robarDescarte'),
       botar: (cartaId) => this._pedirAccion('botar', { cartaId }),
       cantar: () => this._pedirAccion('cantar'),
-      seleccionarCarta: (id) => this._seleccionarCarta(id),
-      sacarDeZona: (indice, id) => this._sacarDeZona(indice, id),
+      seleccionarCarta: (id) => this.vista.seleccionarCarta(id),
+      sacarDeZona: (indice, id) => this.vista.sacarDeZona(indice, id),
       reiniciar: () => this._pedirReinicio(),
     });
   }
 
-  async crearSala(nombre) {
+  get maxJugadores() {
+    return MAX_JUGADORES;
+  }
+
+  _colorDe(numero) {
+    return COLORES[(numero - 1) % COLORES.length];
+  }
+
+  // ===== CREAR / UNIRSE =====
+
+  async crearSala(nombre, opciones = {}) {
+    const silencioso = !!opciones.silencioso;
     this.esHost = true;
     this.miNumero = 1;
     this.miNombre = nombre || 'Jugador 1';
-    this.modelo = new CardGameModel();
-    this.sala = this._generarCodigo();
+    this.modelo = null;
+    this.sala = opciones.codigo || this._generarCodigo();
+    this.jugadores = [{ clave: null, numero: 1, nombre: this.miNombre, conectado: true }];
+    this._desconectado = false;
 
     this.red = new PeerNetwork({
-      onMensaje: (datos) => this._procesarMensajeHost(datos),
-      onConexion: () => this._hostComienzo(),
-      onDesconexion: () => this._manejarDesconexion(),
-      onError: (err) => this._mostrarErrorRed(err),
+      onMensaje: (datos, clave) => this._procesarMensajeHost(datos, clave),
+      onConexion: () => { /* espera registro */ },
+      onDesconexion: (clave) => this._hostDesconexion(clave),
+      onError: (err) => { if (!silencioso) this._mostrarErrorRed(err); },
+      onRechazo: () => this.ui.toast('Sala llena: máximo 4 jugadores.', 'warning'),
+    });
+    this.red.resolverEstadoSala = () => ({
+      cantidad: this.jugadores.filter((j) => j.conectado).length,
+      maxJugadores: MAX_JUGADORES,
+      enPartida: this.enPartida,
     });
 
     try {
-      const id = await this.red.crearSala(this.sala);
+      const id = await this.red.crearSala(this.sala, { maxConexiones: MAX_JUGADORES - 1 });
       this.sala = id;
-      this.ui.esperandoSala(this.sala, true);
+      this._actualizarChipConexion(true);
+      this._mostrarEspera();
+      return true;
     } catch (err) {
       this.ui.cerrarModales();
+      try { if (this.red) this.red.cerrar(); } catch (e) { /* ignorar */ }
+      if (silencioso) throw err;
       this._mostrarErrorRed(err);
+      return false;
     }
   }
 
-  async unirse(codigo, nombre) {
+  async unirse(codigo, nombre, opciones = {}) {
+    const silencioso = !!opciones.silencioso;
     this.esHost = false;
-    this.miNumero = 2;
-    this.miNombre = nombre || 'Jugador 2';
+    this.miNumero = 0; // se asigna en la bienvenida
+    this.miNombre = nombre || 'Jugador';
     this.sala = codigo.trim();
+    this._desconectado = false;
 
     this.red = new PeerNetwork({
       onMensaje: (datos) => this._procesarMensajeInvitado(datos),
-      onConexion: (conn) => {
-        this.canalHost = conn;
-        this.red.enviar({ tipo: 'nombre', nombre: this.miNombre });
+      onConexion: () => {
+        this.red.enviar({ tipo: 'registro', nombre: this.miNombre });
+        this._mostrarEspera();
       },
       onDesconexion: () => this._manejarDesconexion(),
-      onError: (err) => this._mostrarErrorRed(err),
+      onError: (err) => { if (!silencioso) this._mostrarErrorRed(err); },
     });
 
-    this.ui.esperandoSala(this.sala, false);
+    this.ui.esperandoConexion(this.sala);
     try {
       await this.red.unirse(this.sala);
+      this._actualizarChipConexion(true);
+      return true;
     } catch (err) {
       this.ui.cerrarModales();
+      try { if (this.red) this.red.cerrar(); } catch (e) { /* ignorar */ }
+      if (silencioso) throw err;
       this._mostrarErrorRed(err);
+      return false;
     }
   }
 
+  // ===== SALAS PÚBLICAS =====
+
+  prospectarSalasPublicas(codigos) {
+    const sonda = new PeerNetwork();
+    return sonda.prospectarSalas(codigos, 8000);
+  }
+
+  async entrarSalaPublica(codigo, nombre) {
+    // Si hay anfitrión, me uno; si la sala está vacía, la abro yo.
+    try {
+      await this.unirse(codigo, nombre, { silencioso: true });
+      return true;
+    } catch (err) { /* sala inexistente: me convierto en anfitrión */ }
+
+    try {
+      await this.crearSala(nombre, { codigo, silencioso: true });
+      return true;
+    } catch (err) {
+      this._mostrarErrorRed(err);
+      if (this.onSalirAlInicio) this.onSalirAlInicio();
+      return false;
+    }
+  }
+
+  _generarCodigo() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let codigo = '';
+    for (let i = 0; i < 4; i++) codigo += chars[Math.floor(Math.random() * chars.length)];
+    return `443-${codigo}`;
+  }
+
   _mostrarErrorRed(err) {
+    this._actualizarChipConexion(false);
     this.ui.toast(err && err.message ? err.message : 'Error de red', 'error');
     if (!this.enPartida) {
       this.ui.cerrarModales();
@@ -93,31 +160,155 @@ export class GameController {
     }
   }
 
-  _generarCodigo() {
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    let codigo = '';
-    for (let i = 0; i < 4; i++) {
-      codigo += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return `443-${codigo}`;
+  _actualizarChipConexion(online) {
+    const chip = document.getElementById('chip-conexion');
+    if (!chip) return;
+    chip.classList.remove('online', 'offline');
+    chip.classList.add(online ? 'online' : 'offline');
+    const txt = chip.querySelector('.txt');
+    if (txt) txt.textContent = online ? 'Conectado' : 'Sin conexión';
   }
 
-  _hostComienzo() {
-    this.enPartida = true;
+  // ===== SALA DE ESPERA (HOST) =====
+
+  _mostrarEspera() {
+    // Cierra cualquier modal abierto (carga, etc.) antes de mostrar el overlay.
     this.ui.cerrarModales();
-    this.ui.toast('¡Rival conectado! Buena suerte.', 'success');
+    this.ui.mostrarEspera({
+      codigo: this.sala,
+      esHost: this.esHost,
+      puedeIniciar: this.esHost && this.jugadores.filter((j) => j.conectado).length >= MIN_JUGADORES,
+      maxJugadores: MAX_JUGADORES,
+      alIniciar: () => this._iniciarPartida(),
+      alSalir: () => this._salir(),
+    });
+    this._actualizarEspera();
   }
 
-  // ===== MENSAJES ENTRANTES =====
+  _actualizarEspera() {
+    const lista = this.jugadores
+      .filter((j) => j.conectado)
+      .map((j) => ({
+        numero: j.numero,
+        nombre: j.nombre,
+        color: this._colorDe(j.numero),
+        esHost: j.numero === 1,
+      }));
+    this.ui.actualizarEspera({
+      codigo: this.sala,
+      jugadores: lista,
+      esHost: this.esHost,
+      puedeIniciar: this.esHost && lista.length >= MIN_JUGADORES,
+      maxJugadores: MAX_JUGADORES,
+    });
+  }
 
-  _procesarMensajeHost(datos) {
-    if (datos.tipo === 'nombre') {
-      this._nombreRival = datos.nombre;
-      this._enviarBienvenida();
+  _hostDesconexion(clave) {
+    if (this.enPartida) {
+      this._manejarDesconexion();
       return;
     }
+    this.jugadores = this.jugadores.filter((j) => j.clave !== clave);
+    this._recalcularNumeros();
+    this._difundirSala();
+    this._actualizarEspera();
+  }
+
+  _recalcularNumeros() {
+    // Mantener host como 1 y renumerar invitados 2..N
+    let n = 1;
+    for (const j of this.jugadores) {
+      if (j.numero === 1) continue;
+      n += 1;
+      j.numero = n;
+    }
+  }
+
+  _iniciarPartida() {
+    if (!this.esHost) return;
+    const conectados = this.jugadores.filter((j) => j.conectado);
+    if (conectados.length < MIN_JUGADORES) {
+      this.ui.toast('Se necesitan al menos 2 jugadores.', 'warning');
+      return;
+    }
+    this.modelo = new CardGameModel(conectados.length);
+    this.enPartida = true;
+    this._ganadorNotificado = null;
+
+    // Mapear números a claves
+    this._clavePorNumero = new Map();
+    for (const j of conectados) {
+      if (j.numero !== 1) this._clavePorNumero.set(j.numero, j.clave);
+    }
+
+    this.ui.cerrarModales();
+    this._difundirInicio();
+    this._aplicarEstado(this._estadoPara(1));
+  }
+
+  _difundirInicio() {
+    for (const j of this.jugadores) {
+      if (j.numero === 1 || !j.conectado) continue;
+      this.red.enviarA(j.clave, {
+        tipo: 'inicio',
+        estado: this._estadoPara(j.numero),
+      });
+    }
+  }
+
+  _difundirSala() {
+    const conectados = this.jugadores.filter((j) => j.conectado);
+    for (const j of conectados) {
+      if (j.numero === 1) continue;
+      this.red.enviarA(j.clave, {
+        tipo: 'sala',
+        soyJugador: j.numero,
+        maxJugadores: MAX_JUGADORES,
+        jugadores: conectados.map((k) => ({
+          numero: k.numero,
+          nombre: k.nombre,
+          color: this._colorDe(k.numero),
+          esHost: k.numero === 1,
+        })),
+      });
+    }
+  }
+
+  // ===== MENSAJES HOST =====
+
+  _procesarMensajeHost(datos, clave) {
+    if (!datos) return;
+
+    if (datos.tipo === 'registro') {
+      if (this.enPartida) {
+        this.red.enviarA(clave, { tipo: 'rechazado', razon: 'partida' });
+        setTimeout(() => { if (this.red) this.red.cerrarConexion(clave); }, 200);
+        return;
+      }
+      const yaExiste = this.jugadores.some((j) => j.clave === clave);
+      if (!yaExiste) {
+        if (this.jugadores.filter((j) => j.conectado).length >= MAX_JUGADORES) {
+          this.red.enviarA(clave, { tipo: 'rechazado', razon: 'llena' });
+          return;
+        }
+        const numero = this._siguienteNumero();
+        this.jugadores.push({ clave, numero, nombre: datos.nombre || `Jugador ${numero}`, conectado: true });
+        this.jugadores.sort((a, b) => a.numero - b.numero);
+      } else {
+        const j = this.jugadores.find((x) => x.clave === clave);
+        j.conectado = true;
+        j.nombre = datos.nombre || j.nombre;
+      }
+      this._difundirSala();
+      this._actualizarEspera();
+      return;
+    }
+
+    const jugador = this.jugadores.find((j) => j.clave === clave);
+    if (!jugador) return;
+
     if (datos.tipo === 'accion') {
-      this._ejecutarAccion(2, datos);
+      this._ejecutarAccion(jugador.numero, datos);
       return;
     }
     if (datos.tipo === 'reiniciar') {
@@ -126,13 +317,32 @@ export class GameController {
     }
   }
 
+  _siguienteNumero() {
+    const usados = new Set(this.jugadores.map((j) => j.numero));
+    for (let n = 2; n <= MAX_JUGADORES; n++) {
+      if (!usados.has(n)) return n;
+    }
+    return MAX_JUGADORES;
+  }
+
+  // ===== MENSAJES INVITADO =====
+
   _procesarMensajeInvitado(datos) {
-    if (datos.tipo === 'bienvenida') {
+    if (!datos) return;
+    if (datos.tipo === 'sala') {
+      this.miNumero = datos.soyJugador;
+      this.ui.actualizarEspera({
+        codigo: this.sala,
+        jugadores: datos.jugadores || [],
+        esHost: false,
+        puedeIniciar: false,
+        maxJugadores: datos.maxJugadores || MAX_JUGADORES,
+      });
+      return;
+    }
+    if (datos.tipo === 'inicio') {
       this.enPartida = true;
       this.ui.cerrarModales();
-      this.sala = datos.sala;
-      this.miNumero = datos.jugador;
-      this._colores = datos.colores;
       this._aplicarEstado(datos.estado);
       return;
     }
@@ -140,40 +350,48 @@ export class GameController {
       this._aplicarEstado(datos.estado);
       return;
     }
+    if (datos.tipo === 'rechazado') {
+      this._desconectado = true;
+      this.ui.cerrarModales();
+      try { if (this.red) this.red.cerrar(); } catch (e) { /* ignorar */ }
+      if (datos.razon === 'partida') {
+        this.ui.alerta('Partida en curso', 'Esa sala ya tiene una partida en curso. Intenta con otra.');
+      } else {
+        this.ui.alerta('Sala llena', 'Esta sala ya tiene 4 jugadores. Intenta con otro código.');
+      }
+      if (this.onSalirAlInicio) this.onSalirAlInicio();
+      return;
+    }
     if (datos.tipo === 'error') {
       this.ui.toast(datos.mensaje, 'error');
     }
   }
 
-  _enviarBienvenida() {
-    if (!this.red || this.red.conexiones.size === 0) return;
-    const estado = this._estadoPara(2);
-    this.red.enviar({
-      tipo: 'bienvenida',
-      sala: this.sala,
-      jugador: 2,
-      colores: this._colores,
-      estado,
-    });
-    this._aplicarEstado(this._estadoPara(1));
-  }
-
   // ===== ESTADO =====
 
-  _estadoPara(jugador) {
-    const rival = jugador === 1 ? 2 : 1;
+  _estadoPara(numero) {
+    const conectados = this.jugadores.filter((j) => j.conectado);
+    const jugadores = conectados.map((j) => ({
+      numero: j.numero,
+      nombre: j.numero === 1 ? this.miNombre : j.nombre,
+      color: this._colorDe(j.numero),
+      esHost: j.numero === 1,
+      cartas: this.modelo.manos[j.numero] ? this.modelo.manos[j.numero].length : 0,
+      esTurno: this.modelo.turno === j.numero && !this.modelo.ganador,
+      esGanador: this.modelo.ganador === j.numero,
+    }));
+
     return {
       sala: this.sala,
-      soyJugador: jugador,
-      nombres: { 1: this.miNombre, 2: this._nombreRival },
-      colores: this._colores,
-      mazo: this.modelo.mazo.length,
+      soyJugador: numero,
+      numJugadores: conectados.length,
+      jugadores,
+      mazoCount: this.modelo.mazo.length,
       descarteTop: this.modelo.descarte.length > 0
         ? this.modelo.descarte[this.modelo.descarte.length - 1].toJSON()
         : null,
       descarteCount: this.modelo.descarte.length,
-      mano: this.modelo.manos[jugador].map((c) => c.toJSON()),
-      cartasRival: this.modelo.manos[rival].length,
+      mano: (this.modelo.manos[numero] || []).map((c) => c.toJSON()),
       turno: this.modelo.turno,
       fase: this.modelo.fase,
       ganador: this.modelo.ganador,
@@ -181,9 +399,9 @@ export class GameController {
         ? this._combinacionDe(this.modelo.ganador)
         : [],
       puede443:
-        this.modelo.turno === jugador &&
+        this.modelo.turno === numero &&
         this.modelo.fase === 'decidir' &&
-        CardGameModel.validar443(this.modelo.manos[jugador]),
+        CardGameModel.validar443(this.modelo.manos[numero]),
     };
   }
 
@@ -198,16 +416,12 @@ export class GameController {
     return {
       sala: datos.sala,
       soyJugador: datos.soyJugador,
-      nombres: datos.nombres,
-      colores: datos.colores,
-      mazoCount: datos.mazo,
+      numJugadores: datos.numJugadores,
+      jugadores: datos.jugadores || [],
+      mazoCount: datos.mazoCount,
       descarteTop: datos.descarteTop ? Card.fromJSON(datos.descarteTop) : null,
       descarteCount: datos.descarteCount || 0,
-      manos: {
-        [datos.soyJugador]: (datos.mano || []).map((c) => Card.fromJSON(c)),
-        [datos.soyJugador === 1 ? 2 : 1]: [],
-      },
-      cartasRival: datos.cartasRival,
+      manos: { [datos.soyJugador]: (datos.mano || []).map((c) => Card.fromJSON(c)) },
       turno: datos.turno,
       fase: datos.fase,
       ganador: datos.ganador,
@@ -229,27 +443,31 @@ export class GameController {
       this._ganadorNotificado = null;
       return;
     }
-    if (estado.ganador !== this._ganadorNotificado) {
-      this._ganadorNotificado = estado.ganador;
-      if (estado.ganador === 0) {
-        this._confeti(false);
-        setTimeout(() => {
-          this.ui.notificarEmpate().then((r) => {
-            if (r.isConfirmed) {
-              if (this.esHost) this._ejecutarReinicio();
-              else if (this.red) this.red.enviar({ tipo: 'reiniciar' });
-            }
-          });
-        }, 700);
-      } else {
-        const ganador = estado.ganador;
-        const nombre = estado.nombres[ganador];
-        const descripcion = estado.descripcionCanto || [];
-        this._confeti(true);
-        setTimeout(() => {
-          this.ui.notificarVictoria(nombre, ganador, estado.colores[ganador], descripcion);
-        }, 600);
-      }
+    if (estado.ganador === this._ganadorNotificado) return;
+    this._ganadorNotificado = estado.ganador;
+
+    if (estado.ganador === 0) {
+      this._confeti(false);
+      this.audio.empate();
+      setTimeout(() => {
+        const continuar = () => {
+          if (this.esHost) this._ejecutarReinicio();
+          else if (this.red) this.red.enviar({ tipo: 'reiniciar' });
+        };
+        this.ui.notificarEmpate().then((r) => { if (r.isConfirmed) continuar(); });
+      }, 600);
+    } else {
+      const ganador = estado.jugadores.find((j) => j.numero === estado.ganador);
+      const nombre = ganador ? ganador.nombre : 'Jugador';
+      const color = ganador ? ganador.color : '#fbbf24';
+      const descripcion = estado.descripcionCanto || [];
+      this._confeti(true);
+      if (estado.ganador === estado.soyJugador) this.audio.victoria();
+      setTimeout(() => {
+        this.ui.notificarVictoria(nombre, estado.ganador, color, descripcion).then(() => {
+          this.ui.cerrarModales();
+        });
+      }, 500);
     }
   }
 
@@ -259,23 +477,19 @@ export class GameController {
     return combo ? combo.descripcion : [];
   }
 
-  _describirCanto(jugador) {
-    return this._combinacionDe(jugador);
-  }
-
   _confeti(ganar) {
     if (!window.confetti) return;
-    const origen = { x: Math.random() * 0.8 + 0.1, y: 0.6 };
+    const origen = { x: Math.random() * 0.6 + 0.2, y: 0.6 };
     window.confetti({
-      particleCount: ganar ? 180 : 40,
+      particleCount: ganar ? 170 : 40,
       spread: 80,
       origin: origen,
-      colors: ['#fbbf24', '#38bdf8', '#4ade80', '#f472b6', '#f8fafc'],
+      colors: ['#e6b84d', '#38bdf8', '#4ade80', '#f472b6', '#f8fafc'],
     });
     if (ganar) {
       setTimeout(() => {
-        window.confetti({ particleCount: 90, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#fbbf24', '#38bdf8', '#4ade80'] });
-        window.confetti({ particleCount: 90, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#fbbf24', '#38bdf8', '#4ade80'] });
+        window.confetti({ particleCount: 80, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#e6b84d', '#4ade80', '#38bdf8'] });
+        window.confetti({ particleCount: 80, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#e6b84d', '#4ade80', '#38bdf8'] });
       }, 350);
     }
   }
@@ -283,29 +497,27 @@ export class GameController {
   // ===== ACCIONES =====
 
   _pedirAccion(accion, extras = {}) {
-    if (accion === 'cantar') {
-      extras.zonas = this.vista.obtenerZonasIds();
-    }
+    const paquete = { accion, ...extras };
+    if (accion === 'cantar') paquete.zonas = this.vista.obtenerZonasIds();
+
     if (this.esHost) {
-      this._ejecutarAccion(1, { accion, ...extras });
+      this._ejecutarAccion(1, paquete);
       return;
     }
     if (!this.red) return;
-    this.red.enviar({ tipo: 'accion', accion, ...extras });
+    this.red.enviar({ tipo: 'accion', ...paquete });
   }
 
-  _actualizarVistaMano(jugador) {
+  _repartirNuevaMano(jugador) {
     if (jugador === this.miNumero && this.modelo) {
       this.vista.nuevaMano(this.modelo.manos[jugador]);
     }
   }
 
   _ejecutarAccion(jugador, datos) {
-    if (!this.modelo) return;
+    if (!this.modelo || this.modelo.ganador != null) return;
     if (this.modelo.turno !== jugador) {
-      if (this.esHost && jugador === 2) {
-        this.red.enviar({ tipo: 'error', mensaje: 'Aún no es tu turno' });
-      }
+      this._errorAccion(jugador, 'Aún no es tu turno');
       return;
     }
 
@@ -313,78 +525,61 @@ export class GameController {
 
     if (accion === 'robarMazo') {
       const carta = this.modelo.robarDelMazo(jugador);
-      if (carta) {
-        this.audio.robar();
-        this._actualizarVistaMano(jugador);
-      } else {
-        this._finSinCartas(jugador);
-      }
+      if (carta) { this.audio.robar(); this._repartirNuevaMano(jugador); }
+      else this._finSinCartas();
     } else if (accion === 'robarDescarte') {
       const carta = this.modelo.robarDelDescarte(jugador);
-      if (carta) {
-        this.audio.robar();
-        this._actualizarVistaMano(jugador);
-      } else {
-        if (this.esHost && jugador === 2) {
-          this.red.enviar({ tipo: 'error', mensaje: 'El descarte está vacío' });
-        } else {
-          this.ui.toast('El descarte está vacío', 'info');
-        }
-      }
+      if (carta) { this.audio.robar(); this._repartirNuevaMano(jugador); }
+      else this._errorAccion(jugador, 'El descarte está vacío');
     } else if (accion === 'botar') {
       const carta = this.modelo.botar(jugador, datos.cartaId);
-      if (carta) {
-        this.audio.botar();
-        this._actualizarVistaMano(jugador);
-        this.audio.turno();
-      } else if (this.esHost && jugador === 2) {
-        this.red.enviar({ tipo: 'error', mensaje: 'Carta no válida en tu mano' });
-      }
+      if (carta) { this.audio.botar(); this._repartirNuevaMano(jugador); }
+      else this._errorAccion(jugador, 'Carta no válida en tu mano');
     } else if (accion === 'cantar') {
       const zonas = (datos.zonas || []).map((z) => z.map((c) => (typeof c === 'string' ? c : c.id)));
       const gano = this.modelo.cantar443(jugador, zonas);
       if (gano) {
-        this._actualizarVistaMano(jugador);
-        this.audio.victoria();
-      } else if (this.esHost && jugador === 2) {
-        this.red.enviar({ tipo: 'error', mensaje: 'Aún no formas un 4-4-3 válido' });
-      } else {
-        this.ui.toast('Aún no formas un 4-4-3 válido', 'warning');
+        this._repartirNuevaMano(jugador);
+        if (jugador === this.miNumero) this.audio.victoria();
       }
+      else this._errorAccion(jugador, 'Aún no formas un 4-4-3 válido');
     }
 
     this._broadcast();
   }
 
-  _finSinCartas(jugador) {
+  _errorAccion(jugador, mensaje) {
+    // Informar al jugador que cometió el error (no a todos).
+    if (this.esHost && jugador !== 1) {
+      const clave = this._clavePorNumero && this._clavePorNumero.get(jugador);
+      if (clave) this.red.enviarA(clave, { tipo: 'error', mensaje });
+    }
+    if (jugador === this.miNumero) {
+      this.ui.toast(mensaje, 'error');
+    }
+  }
+
+  _finSinCartas() {
     this.modelo.fase = 'fin';
     this.modelo.ganador = 0;
   }
 
   _broadcast() {
-    this._aplicarEstado(this._estadoPara(this.miNumero));
-    if (this.esHost && this.red && this.red.conexiones.size > 0) {
-      this.red.enviar({ tipo: 'estado', estado: this._estadoPara(2) });
+    this._aplicarEstado(this._estadoPara(1));
+    if (!this.esHost || !this.red) return;
+    for (const j of this.jugadores) {
+      if (j.numero === 1 || !j.conectado) continue;
+      this.red.enviarA(j.clave, { tipo: 'estado', estado: this._estadoPara(j.numero) });
     }
-  }
-
-  _seleccionarCarta(id) {
-    this.vista.seleccionarCarta(id);
-  }
-
-  _sacarDeZona(indice, id) {
-    this.vista.sacarDeZona(indice, id);
   }
 
   // ===== REINICIO =====
 
   _pedirReinicio() {
     if (this.esHost) {
-      this.ui.confirmarReinicio().then((r) => {
-        if (r.isConfirmed) this._ejecutarReinicio();
-      });
-    } else {
-      if (this.red) this.red.enviar({ tipo: 'reiniciar' });
+      this.ui.confirmarReinicio().then((r) => { if (r.isConfirmed) this._ejecutarReinicio(); });
+    } else if (this.red) {
+      this.red.enviar({ tipo: 'reiniciar' });
     }
   }
 
@@ -392,19 +587,31 @@ export class GameController {
     if (!this.modelo) return;
     this.modelo.resetear();
     this._ganadorNotificado = null;
-    this.vista.nuevaMano(this.modelo.manos[1]);
+    this.vista.limpiarSeleccion();
+    this.vista.reiniciarMano(this.modelo.manos[1]);
     this.audio.mezclar([392, 523.25, 659.25], 0.12, 0);
     this._broadcast();
   }
 
-  // ===== DESCONEXIÓN =====
+  // ===== SALIR / DESCONEXIÓN =====
+
+  _salir() {
+    this.ui.cerrarModales();
+    if (this.red) this.red.cerrar();
+    this.red = null;
+    this.enPartida = false;
+    this.jugadores = [];
+    this._actualizarChipConexion(false);
+    if (this.onSalirAlInicio) this.onSalirAlInicio();
+  }
 
   _manejarDesconexion() {
     if (this._desconectado) return;
     this._desconectado = true;
     this.ui.cerrarModales();
+    this.enPartida = false;
     this.ui.notificarDesconexion().then(() => {
-      window.location.reload();
+      if (this.onSalirAlInicio) this.onSalirAlInicio();
     });
   }
 }

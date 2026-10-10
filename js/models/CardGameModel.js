@@ -1,7 +1,9 @@
 import { crearBaraja } from './Card.js';
 
-const CARTAS_POR_JUGADOR = 10;
-const NUM_JUGADORES = 2;
+export const CARTAS_POR_JUGADOR = 10;
+export const MIN_JUGADORES = 2;
+export const MAX_JUGADORES = 4;
+export const CARTAS_PARA_CANTAR = 11;
 
 export function mezclar(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -12,10 +14,11 @@ export function mezclar(array) {
 }
 
 export class CardGameModel {
-  constructor() {
+  constructor(numJugadores = MIN_JUGADORES) {
+    this.numJugadores = Math.min(Math.max(numJugadores, MIN_JUGADORES), MAX_JUGADORES);
     this.mazo = [];
     this.descarte = [];
-    this.manos = { 1: [], 2: [] };
+    this.manos = {};
     this.turno = 1;
     this.fase = 'robar'; // 'robar' | 'decidir' | 'fin'
     this.ganador = null;
@@ -28,16 +31,22 @@ export class CardGameModel {
     this.iniciarPartida();
   }
 
+  _crearManosVacias() {
+    const manos = {};
+    for (let j = 1; j <= this.numJugadores; j++) manos[j] = [];
+    return manos;
+  }
+
   iniciarPartida() {
     this.mazo = mezclar(crearBaraja());
     this.descarte = [];
-    this.manos = { 1: [], 2: [] };
+    this.manos = this._crearManosVacias();
     this.ganador = null;
     this.ultimoEvento = null;
     this.nuevasCartas = [];
 
     for (let i = 0; i < CARTAS_POR_JUGADOR; i++) {
-      for (let jugador = 1; jugador <= NUM_JUGADORES; jugador++) {
+      for (let jugador = 1; jugador <= this.numJugadores; jugador++) {
         this.manos[jugador].push(this.mazo.pop());
       }
     }
@@ -46,13 +55,22 @@ export class CardGameModel {
     this.descarte.push(primera);
     this.nuevasCartas.push(primera);
 
-    this.turno = Math.random() < 0.5 ? 1 : 2;
+    this.turno = Math.floor(Math.random() * this.numJugadores) + 1;
     this.fase = 'robar';
+  }
+
+  _siguienteTurno(jugador) {
+    return (jugador % this.numJugadores) + 1;
+  }
+
+  _manoAtope(jugador) {
+    return this.manos[jugador] && this.manos[jugador].length >= CARTAS_PARA_CANTAR;
   }
 
   robarDelMazo(jugador) {
     if (this.fase !== 'robar') return null;
-    if (this.manos[this.turno].length >= 11) return null;
+    if (!this.manos[jugador]) return null;
+    if (this._manoAtope(jugador)) return null;
 
     this.recomponerMazo();
     if (this.mazo.length === 0) {
@@ -69,8 +87,9 @@ export class CardGameModel {
 
   robarDelDescarte(jugador) {
     if (this.fase !== 'robar') return null;
+    if (!this.manos[jugador]) return null;
     if (this.descarte.length === 0) return null;
-    if (this.manos[this.turno].length >= 11) return null;
+    if (this._manoAtope(jugador)) return null;
 
     const carta = this.descarte.pop();
     this.manos[jugador].push(carta);
@@ -91,6 +110,7 @@ export class CardGameModel {
   botar(jugador, cartaId) {
     if (this.fase !== 'decidir') return null;
     const mano = this.manos[jugador];
+    if (!mano) return null;
     const indice = mano.findIndex((c) => c.id === cartaId);
     if (indice === -1) return null;
 
@@ -99,7 +119,7 @@ export class CardGameModel {
     this.nuevasCartas = [];
     this.ultimoEvento = { tipo: 'botar', jugador, carta };
     this.fase = 'robar';
-    this.turno = jugador === 1 ? 2 : 1;
+    this.turno = this._siguienteTurno(jugador);
     return carta;
   }
 
@@ -195,7 +215,7 @@ export class CardGameModel {
   }
 
   static validar443(mano) {
-    if (!Array.isArray(mano) || mano.length !== 11) return false;
+    if (!Array.isArray(mano) || mano.length !== CARTAS_PARA_CANTAR) return false;
 
     const indices = mano.map((_, i) => i);
 
@@ -219,7 +239,7 @@ export class CardGameModel {
   }
 
   static encontrarCombinacion(mano) {
-    if (!Array.isArray(mano) || mano.length !== 11) return null;
+    if (!Array.isArray(mano) || mano.length !== CARTAS_PARA_CANTAR) return null;
 
     const indices = mano.map((_, i) => i);
 

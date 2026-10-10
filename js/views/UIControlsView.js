@@ -23,6 +23,7 @@ export function reiniciarColores() {
 export class UIControlsView {
   constructor() {
     this.coloresPorConexion = new Map();
+    this._callbacks = {};
   }
 
   _swal() {
@@ -40,43 +41,133 @@ export class UIControlsView {
     return COLORES_JUGADOR[numero - 1] || '#fbbf24';
   }
 
-  esperandoSala(codigo, soyHost) {
-    const swal = this._swal();
-    if (!swal) return null;
-    return swal.fire({
-      title: soyHost ? 'Sala creada' : 'Conectando...',
-      html: [
-        '<div class="flex flex-col items-center gap-3">',
-        '<div class="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>',
-        `<p class="text-lg font-bold tracking-widest">${codigo}</p>`,
-        `<p class="text-sm text-slate-400">${soyHost ? 'Comparte este código con tu rival para que se una.' : 'Esperando al anfitrión...'}</p>`,
-        soyHost ? '<button id="btn-copiar-sala" class="mt-1 text-xs bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-4 py-2 rounded-lg transition">📋 Copiar código</button>' : '',
-        '</div>',
-      ].join(''),
-      showConfirmButton: false,
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      didOpen: () => {
-        const btn = document.getElementById('btn-copiar-sala');
-        if (btn) {
-          btn.addEventListener('click', () => {
-            try {
-              navigator.clipboard.writeText(codigo);
-              btn.textContent = '✓ Copiado';
-            } catch (e) {
-              btn.textContent = 'Copia el código manualmente';
-            }
-          });
-        }
-      },
-    });
+  // ===== SALA DE ESPERA (overlay propio) =====
+
+  mostrarEspera({ codigo, esHost, puedeIniciar, maxJugadores, alIniciar, alSalir } = {}) {
+    const overlay = document.getElementById('overlay-espera');
+    const elCodigo = document.getElementById('espera-codigo');
+    const elIniciar = document.getElementById('btn-espera-iniciar');
+    const elSalir = document.getElementById('btn-espera-salir');
+    const elNota = document.getElementById('espera-nota');
+    const elCopiar = document.getElementById('btn-copiar-codigo');
+
+    if (elCodigo) elCodigo.textContent = codigo;
+    if (elNota) {
+      elNota.textContent = esHost
+        ? 'Esperando a que se unan jugadores…'
+        : 'Esperando al anfitrión…';
+    }
+    if (elIniciar) {
+      elIniciar.classList.toggle('hidden', !esHost);
+      elIniciar.disabled = esHost ? !puedeIniciar : true;
+      if (esHost) {
+        elIniciar.onclick = () => {
+          if (alIniciar) alIniciar();
+        };
+      } else {
+        elIniciar.onclick = null;
+      }
+    }
+    if (elSalir) {
+      elSalir.onclick = () => {
+        if (alSalir) alSalir();
+      };
+    }
+    if (elCopiar) {
+      elCopiar.onclick = () => {
+        try {
+          navigator.clipboard.writeText(codigo || '');
+          elCopiar.textContent = '✓ Copiado';
+          setTimeout(() => { elCopiar.textContent = '📋 Copiar'; }, 1500);
+        } catch (e) { /* sin portapapeles */ }
+      };
+    }
+
+    this._actualizarListaEspera(jugadoresDeEspera());
+
+    if (overlay) overlay.classList.remove('hidden');
+  }
+
+  actualizarEspera({ codigo, jugadores, esHost, puedeIniciar, maxJugadores } = {}) {
+    const overlay = document.getElementById('overlay-espera');
+    const elCodigo = document.getElementById('espera-codigo');
+    const elIniciar = document.getElementById('btn-espera-iniciar');
+    const elNota = document.getElementById('espera-nota');
+
+    if (elCodigo && codigo) elCodigo.textContent = codigo;
+    if (elNota) {
+      const conectados = (jugadores || []).length;
+      const max = maxJugadores || 4;
+      elNota.textContent = conectados >= max
+        ? 'Sala llena: máxima capacidad alcanzada.'
+        : esHost
+          ? `Esperando jugadores… ${conectados}/${max}`
+          : 'Esperando al anfitrión…';
+    }
+    if (elIniciar) {
+      elIniciar.disabled = !(esHost && puedeIniciar);
+    }
+    this._actualizarListaEspera(jugadores || []);
+
+    if (overlay) overlay.classList.remove('hidden');
+  }
+
+  _actualizarListaEspera(jugadores) {
+    const lista = document.getElementById('espera-jugadores');
+    if (!lista) return;
+    lista.innerHTML = '';
+    if (!jugadores || jugadores.length === 0) {
+      const vacio = document.createElement('li');
+      vacio.className = 'lista-vacia';
+      vacio.textContent = 'Aún no hay jugadores en esta sala.';
+      lista.appendChild(vacio);
+      return;
+    }
+    for (const jugador of jugadores) {
+      const li = document.createElement('li');
+      li.className = 'fila-espera';
+      const avatar = document.createElement('span');
+      avatar.className = 'avatar-espera';
+      avatar.style.background = jugador.color || '#fbbf24';
+      avatar.textContent = jugador.numero || '?';
+      const nombre = document.createElement('span');
+      nombre.className = 'nombre-espera';
+      nombre.textContent = (jugador.esHost ? '👑 ' : '') + (jugador.nombre || 'Jugador');
+      li.appendChild(avatar);
+      li.appendChild(nombre);
+      lista.appendChild(li);
+    }
+  }
+
+  cerrarEspera() {
+    const overlay = document.getElementById('overlay-espera');
+    if (overlay) overlay.classList.add('hidden');
   }
 
   cerrarModales() {
+    this.cerrarEspera();
     const swal = this._swal();
     if (swal && swal.isVisible()) {
       swal.close();
     }
+  }
+
+  esperandoConexion(codigo) {
+    const swal = this._swal();
+    if (!swal) return null;
+    return swal.fire({
+      title: 'Conectando…',
+      text: `Buscando la sala ${codigo}`,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => { swal.showLoading(); },
+    });
+  }
+
+  alerta(titulo, texto) {
+    const swal = this._swal();
+    if (!swal) return;
+    return swal.fire({ icon: 'info', title: titulo, text: texto, confirmButtonText: 'Aceptar' });
   }
 
   toast(mensaje, icono = 'info') {
@@ -132,7 +223,7 @@ export class UIControlsView {
     return swal.fire({
       icon: 'warning',
       title: 'Conexión perdida',
-      text: 'Tu rival se desconectó. La partida finaliza.',
+      text: 'Un jugador se desconectó. La partida finaliza.',
       confirmButtonText: 'Volver al inicio',
       allowOutsideClick: false,
     });
@@ -155,7 +246,7 @@ export class UIControlsView {
         '</ul>',
         '<p><b>4.</b> Si logras armar las 3 combinaciones, presiona <b>👑 Cantar 4-4-3</b> y ganas.</p>',
         '<p><b>5.</b> Si no la armas, debes <b>botar 1 carta</b> al descarte y ceder el turno.</p>',
-        '<p><b>Nota:</b> En un grupo de 4 cartas tambien se acepta un trío acompañado de una carta libre.</p>',
+        '<p><b>Nota:</b> En un grupo de 4 cartas también se acepta un trío acompañado de una carta libre.</p>',
         '</div>',
       ].join(''),
       confirmButtonText: '¡A jugar!',
@@ -176,4 +267,8 @@ export class UIControlsView {
       allowOutsideClick: false,
     });
   }
+}
+
+export function jugadoresDeEspera() {
+  return [];
 }
