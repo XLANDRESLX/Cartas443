@@ -133,6 +133,46 @@
         <div id="mano" class="mano"></div>
         <div id="barra-acciones" class="barra-acciones"></div>
       </div>
+
+      <!-- ===== CHAT DE PARTIDA ===== -->
+      <aside id="chat-widget" class="chat-widget hidden" aria-label="Chat de partida">
+        <button id="btn-chat" class="chat-btn" type="button" title="Abrir chat" aria-expanded="false" aria-controls="chat-panel">
+          <span class="chat-btn-icono" aria-hidden="true">💬</span>
+          <span id="chat-badge" class="chat-badge hidden">0</span>
+        </button>
+
+        <section id="chat-panel" class="chat-panel hidden" aria-label="Chat de partida">
+          <header class="chat-cabecera">
+            <div class="chat-cabecera-info">
+              <h2 class="chat-titulo">Chat de partida</h2>
+              <span class="chat-conectados">
+                <span class="chat-punto-online" aria-hidden="true"></span>
+                <span id="chat-conectados-txt">0 conectados</span>
+              </span>
+            </div>
+            <button id="chat-cerrar" class="chat-cerrar" type="button" aria-label="Cerrar chat" title="Cerrar chat">✕</button>
+          </header>
+
+          <div id="chat-participantes" class="chat-participantes"></div>
+
+          <div id="chat-mensajes" class="chat-mensajes" role="log" aria-live="polite" aria-relevant="additions">
+            <p class="chat-vacio">Aún no hay mensajes. ¡Saluda a la mesa!</p>
+          </div>
+
+          <form id="chat-form" class="chat-form" autocomplete="off">
+            <div class="chat-entrada-fila">
+              <textarea id="chat-input" class="chat-input" rows="1" maxlength="500"
+                placeholder="Escribe un mensaje…" aria-label="Mensaje de chat"></textarea>
+              <button id="chat-enviar" class="chat-enviar" type="submit" title="Enviar mensaje"
+                aria-label="Enviar mensaje" disabled>➤</button>
+            </div>
+            <div class="chat-pie">
+              <span id="chat-contador" class="chat-contador">0/500</span>
+              <span class="chat-ayuda">Enter envía · Shift+Enter salto de línea</span>
+            </div>
+          </form>
+        </section>
+      </aside>
     </main>
 
   </div>

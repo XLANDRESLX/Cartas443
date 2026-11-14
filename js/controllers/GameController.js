@@ -4,6 +4,7 @@ import { PeerNetwork } from '../network/PeerNetwork.js';
 import { UIControlsView } from '../views/UIControlsView.js';
 import { BoardView } from '../views/BoardView.js';
 import { AudioView } from '../views/AudioView.js';
+import { ChatController, normalizarTextoChat } from './ChatController.js';
 
 const COLORES = ['#fbbf24', '#38bdf8', '#f472b6', '#a3e635'];
 
@@ -19,6 +20,12 @@ export class GameController {
     this.vista = new BoardView();
     this.ui = new UIControlsView();
     this.audio = new AudioView();
+    this.chat = new ChatController({
+      ui: this.ui,
+      enviar: (texto) => this._enviarChat(texto),
+    });
+    this._chatLimites = new Map();
+    this._chatAvisos = new Map();
 
     this.red = null;
     this.modelo = null;
@@ -146,6 +153,98 @@ export class GameController {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  // ===== CHAT =====
+
+  _reiniciarChat() {
+    this._chatLimites.clear();
+    this._chatAvisos.clear();
+    this.chat.desactivar();
+  }
+
+  _sincronizarChat(jugadores, miNumero) {
+    if (!this.enPartida || !this.sala) return;
+    this.chat.activar({
+      sala: this.sala,
+      jugadores: Array.isArray(jugadores) ? jugadores : this.jugadores,
+      miNumero: Number(miNumero) || this.miNumero,
+    });
+  }
+
+  _enviarChat(texto) {
+    const limpio = normalizarTextoChat(texto);
+    if (!limpio) return { ok: false, error: 'El mensaje está vacío.' };
+    if (!this.enPartida) return { ok: false, error: 'El chat solo está disponible durante la partida.' };
+    if (!this.red) return { ok: false, error: 'Sin conexión con la sala.' };
+
+    if (this.esHost) {
+      this._retransmitirChat(this.miNumero, limpio);
+      return { ok: true };
+    }
+
+    try {
+      this.red.enviar({ tipo: 'chat:send', sala: this.sala, texto: limpio });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: 'No se pudo enviar el mensaje. Revisa la conexión.' };
+    }
+  }
+
+  _crearMensajeChat(numero, texto) {
+    const limpio = normalizarTextoChat(texto);
+    if (!limpio) return null;
+    const jugador = this.jugadores.find((j) => j.numero === numero);
+    if (!jugador || jugador.conectado === false) return null;
+
+    return {
+      tipo: 'chat:message',
+      sala: this.sala,
+      msgId: `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      de: numero,
+      nombre: (jugador.nombre || `Jugador ${numero}`).slice(0, 40),
+      color: this._colorDe(numero),
+      texto: limpio,
+      ts: Date.now(),
+    };
+  }
+
+  _retransmitirChat(numero, texto) {
+    const msg = this._crearMensajeChat(numero, texto);
+    if (!msg) return;
+
+    this.chat.recibirMensaje(msg, numero === this.miNumero);
+    if (!this.esHost || !this.red) return;
+
+    for (const j of this.jugadores) {
+      if (j.numero === this.miNumero) continue;
+      if (!j.conectado || !j.clave) continue;
+      try { this.red.enviarA(j.clave, msg); } catch (e) { /* ignorar */ }
+    }
+  }
+
+  _chatPermitido(clave) {
+    const ahora = Date.now();
+    const previos = (this._chatLimites.get(clave) || []).filter((t) => ahora - t < 10000);
+    if (previos.length >= 10) {
+      this._chatLimites.set(clave, previos);
+      return false;
+    }
+    if (previos.length && ahora - previos[previos.length - 1] < 250) {
+      this._chatLimites.set(clave, previos);
+      return false;
+    }
+    previos.push(ahora);
+    this._chatLimites.set(clave, previos);
+    return true;
+  }
+
+  _puedeAvisarSpam(clave) {
+    const ahora = Date.now();
+    const ultimo = this._chatAvisos.get(clave) || 0;
+    if (ahora - ultimo < 3000) return false;
+    this._chatAvisos.set(clave, ahora);
+    return true;
+  }
+
   // ===== FÁBRICAS DE RED =====
 
   _nuevaRedHost(silencioso) {
@@ -184,6 +283,7 @@ export class GameController {
 
   async crearSala(nombre, opciones = {}) {
     const silencioso = !!opciones.silencioso;
+    this._reiniciarChat();
     this.esHost = true;
     this.miNumero = 1;
     this.hostNumero = 1;
@@ -218,6 +318,7 @@ export class GameController {
 
   async unirse(codigo, nombre, opciones = {}) {
     const silencioso = !!opciones.silencioso;
+    this._reiniciarChat();
     this.esHost = false;
     this.miNumero = 0;
     this.hostNumero = 1;
@@ -330,6 +431,8 @@ export class GameController {
   }
 
   _hostDesconexion(clave) {
+    this._chatLimites.delete(clave);
+    this._chatAvisos.delete(clave);
     const j = this.jugadores.find((x) => x.clave === clave);
     if (!j) return;
     j.conectado = false;
@@ -499,6 +602,24 @@ export class GameController {
     const jugador = this.jugadores.find((j) => j.clave === clave);
     if (!jugador) return;
 
+    if (datos.tipo === 'chat:send') {
+      if (!this.enPartida) return;
+      if (datos.sala && datos.sala !== this.sala) return;
+      if (!this._chatPermitido(clave)) {
+        if (this._puedeAvisarSpam(clave)) {
+          try {
+            this.red.enviarA(clave, {
+              tipo: 'chat:error',
+              mensaje: 'Vas muy rápido. Espera unos segundos antes de enviar otro mensaje.',
+            });
+          } catch (e) { /* ignorar */ }
+        }
+        return;
+      }
+      this._retransmitirChat(jugador.numero, datos.texto);
+      return;
+    }
+
     if (datos.tipo === 'accion') {
       this._ejecutarAccion(jugador.numero, datos);
       return;
@@ -526,6 +647,18 @@ export class GameController {
 
   _procesarMensajeInvitado(datos) {
     if (!datos) return;
+
+    if (datos.tipo === 'chat:message') {
+      if (datos.sala && datos.sala !== this.sala) return;
+      if (!this.enPartida) return;
+      this.chat.recibirMensaje(datos, datos.de === this.miNumero);
+      return;
+    }
+    if (datos.tipo === 'chat:error') {
+      this.chat.mostrarError(datos.mensaje);
+      return;
+    }
+
     if (datos.tipo === 'sala') {
       this.miNumero = datos.soyJugador;
       if (datos.hostNumero) this.hostNumero = datos.hostNumero;
@@ -552,6 +685,7 @@ export class GameController {
     }
     if (datos.tipo === 'rechazado') {
       this._desconectado = true;
+      this._reiniciarChat();
       this._borrarSesion();
       this.ui.cerrarModales();
       try { if (this.red) this.red.cerrar(); } catch (e) { /* ignorar */ }
@@ -616,6 +750,7 @@ export class GameController {
     const estado = this._hidratarEstado(datos);
     this._limpiarReconexion();
     this.vista.render(estado);
+    this._sincronizarChat(estado.jugadores, estado.soyJugador);
     this._detectarDesconectados(estado);
     this._notificarTurno(estado);
     this._detectarFinPartida(estado);
@@ -922,6 +1057,7 @@ export class GameController {
   _abandonarPorFalla() {
     this._limpiarReconexion();
     this._desconectado = true;
+    this._reiniciarChat();
     this._borrarSesion();
     this.ui.cerrarModales();
     this.ui.notificarDesconexion().then(() => {
@@ -1182,6 +1318,7 @@ export class GameController {
   _salir() {
     this._limpiarReconexion();
     this._cancelarTodasDesconexiones();
+    this._reiniciarChat();
     if (!this.esHost && this.red) {
       try { this.red.enviar({ tipo: 'abandonar' }); } catch (e) { /* ignorar */ }
     }
