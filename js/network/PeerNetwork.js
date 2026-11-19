@@ -210,7 +210,7 @@ export class PeerNetwork {
 
   // Sondeo de ocupación de varias salas usando un único peer temporal.
   // Devuelve { [codigo]: { existe, cantidad, maxJugadores, enPartida } }.
-  prospectarSalas(codigos, timeoutMs = 8000) {
+  prospectarSalas(codigos, timeoutMs = 8000, alProgreso = null) {
     const lista = Array.isArray(codigos) ? codigos : [];
     return new Promise((resolve) => {
       const resultados = {};
@@ -237,6 +237,9 @@ export class PeerNetwork {
         if (!actual || actual._listo) return;
         resultados[codigo] = { ...valor, _listo: true };
         pendientes -= 1;
+        if (typeof alProgreso === 'function') {
+          try { alProgreso(codigo, valor); } catch (e) { /* ignorar */ }
+        }
         if (pendientes <= 0) finalizar();
       };
 

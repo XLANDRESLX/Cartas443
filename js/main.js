@@ -64,16 +64,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ===== AVISO ROTAR PANTALLA =====
   const overlayRotar = document.getElementById('overlay-rotar');
+  const btnRotarContinuar = document.getElementById('btn-rotar-continuar');
+  let rotarIgnorado = false;
 
   function actualizarRotar() {
     if (!overlayRotar) return;
     const esPortrait = window.matchMedia('(orientation: portrait)').matches;
-    // Solo mostrar en dispositivos móviles (pantalla pequeña) y si está en portrait
-    if (esPortrait && window.innerWidth <= 768) {
+    const esStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+    // Solo molestar en la app instalada (PWA) y en vertical; en el navegador se puede jugar igual
+    if (esPortrait && esStandalone && !rotarIgnorado) {
       overlayRotar.classList.remove('hidden');
     } else {
       overlayRotar.classList.add('hidden');
     }
+  }
+
+  if (btnRotarContinuar) {
+    btnRotarContinuar.addEventListener('click', () => {
+      rotarIgnorado = true;
+      overlayRotar.classList.add('hidden');
+    });
   }
 
   actualizarRotar();
@@ -334,12 +345,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     probeandoPublicas = true;
     if (contador) contador.textContent = `Consultando ocupación de ${SALAS_PUBLICAS.length} salas…`;
     pintarPublicas(false);
+    let listas = 0;
     try {
-      const resultados = await control.prospectarSalasPublicas(SALAS_PUBLICAS);
+      const resultados = await control.prospectarSalasPublicas(SALAS_PUBLICAS, (codigo, info) => {
+        ocupacionPublicas[codigo] = info;
+        listas += 1;
+        pintarPublicas(true);
+        if (contador) contador.textContent = `Actualizando… ${listas}/${SALAS_PUBLICAS.length} salas`;
+      });
       ocupacionPublicas = resultados || {};
       pintarPublicas(true);
       const activas = SALAS_PUBLICAS.filter((c) => ocupacionPublicas[c] && ocupacionPublicas[c].existe).length;
-      if (contador) contador.textContent = `${activas} de ${SALAS_PUBLICAS.length} salas con jugadores`;
+      if (contador) contador.textContent = `${activas} de ${SALAS_PUBLICAS.length} salas con jugadores · en vivo`;
     } catch (e) {
       pintarPublicas(true);
       if (contador) contador.textContent = `${SALAS_PUBLICAS.length} salas públicas`;
@@ -354,7 +371,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!document.getElementById('pantalla-lobby').classList.contains('hidden')) {
         rendercirPublicas();
       }
-    }, 15000);
+    }, 10000);
   }
 
   function detenerRefrescoPublicas() {

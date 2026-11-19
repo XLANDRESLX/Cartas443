@@ -9,7 +9,7 @@
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=3">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/img/icon-192.png">
@@ -20,7 +20,9 @@
   <!-- Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+        reg.update().catch(() => {});
+      }).catch((err) => {
         console.log('SW registro falló:', err);
       });
     }
@@ -198,6 +200,7 @@
       <div class="rota-icono">🔄</div>
       <h2 class="rota-titulo">Gira tu celular</h2>
       <p class="rota-texto">Juega en modo horizontal para una mejor experiencia.</p>
+      <button id="btn-rotar-continuar" class="btn btn-secundario">Continuar de todos modos</button>
     </div>
   </div>
 
@@ -225,6 +228,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=3"></script>
 </body>
 </html>
