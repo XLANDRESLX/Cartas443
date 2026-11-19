@@ -1,0 +1,23 @@
+{
+  "name": "4-4-3 Colombiano",
+  "short_name": "4-4-3",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#061a1f",
+  "theme_color": "#0b4630",
+  "description": "Juego de cartas colombiano 4-4-3 multijugador P2P",
+  "icons": [
+    {
+      "src": "assets/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

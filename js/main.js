@@ -46,10 +46,58 @@ function mostrarMesa() {
   if (mesa) mesa.classList.remove('hidden');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const control = new GameController();
 
+  // ===== FORZAR MODO HORIZONTAL EN CELULAR =====
+  async function forzarHorizontal() {
+    if (!('screen' in window) || !('orientation' in window.screen)) return;
+    try {
+      await screen.orientation.lock('landscape');
+    } catch (e) {
+      // No se pudo bloquear (iOS, o requiere interacción del usuario)
+      // Se manejará con CSS de aviso
+    }
+  }
+
+  await forzarHorizontal();
+
+  // ===== AVISO ROTAR PANTALLA =====
+  const overlayRotar = document.getElementById('overlay-rotar');
+
+  function actualizarRotar() {
+    if (!overlayRotar) return;
+    const esPortrait = window.matchMedia('(orientation: portrait)').matches;
+    // Solo mostrar en dispositivos móviles (pantalla pequeña) y si está en portrait
+    if (esPortrait && window.innerWidth <= 768) {
+      overlayRotar.classList.remove('hidden');
+    } else {
+      overlayRotar.classList.add('hidden');
+    }
+  }
+
+  actualizarRotar();
+
+  window.addEventListener('resize', actualizarRotar);
+  if ('screen' in window && 'orientation' in window.screen) {
+    screen.orientation.addEventListener('change', actualizarRotar);
+  }
+
+  // ===== NOMBRE PERSISTENTE =====
+  const KEY_NOMBRE = 'nombre-jugador-443';
   const inputNombre = document.getElementById('input-nombre');
+
+  const nombreGuardado = localStorage.getItem(KEY_NOMBRE);
+  if (nombreGuardado && inputNombre) {
+    inputNombre.value = nombreGuardado;
+  }
+
+  if (inputNombre) {
+    inputNombre.addEventListener('input', () => {
+      localStorage.setItem(KEY_NOMBRE, inputNombre.value.trim());
+    });
+  }
+
   const nombrePorDefecto = () =>
     (inputNombre && inputNombre.value.trim()) || `Jugador ${Math.floor(Math.random() * 90) + 10}`;
 
@@ -115,11 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-lobby').addEventListener('click', () => {
     rendercirLobby();
     rendercirPublicas();
+    iniciarRefrescoPublicas();
     pantalla('pantalla-lobby');
   });
 
   // ===== PANTALLA LOBBY (recientes + código) =====
   document.getElementById('btn-lobby-volver').addEventListener('click', () => {
+    detenerRefrescoPublicas();
     pantalla('pantalla-inicio');
   });
 
@@ -215,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let ocupacionPublicas = {};
   let probeandoPublicas = false;
+  let intervaloPublicas = null;
 
   function estadoPublica(info) {
     if (!info) return { texto: 'Consultando ocupación…', badge: 'espera', etiqueta: '…', entrar: false, boton: 'Consultando…' };
@@ -297,6 +348,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function iniciarRefrescoPublicas() {
+    if (intervaloPublicas) clearInterval(intervaloPublicas);
+    intervaloPublicas = setInterval(() => {
+      if (!document.getElementById('pantalla-lobby').classList.contains('hidden')) {
+        rendercirPublicas();
+      }
+    }, 15000);
+  }
+
+  function detenerRefrescoPublicas() {
+    if (intervaloPublicas) {
+      clearInterval(intervaloPublicas);
+      intervaloPublicas = null;
+    }
+  }
+
   function entrarPublica(codigo) {
     const nombre = nombrePorDefecto();
     mostrarMesa();
@@ -305,5 +372,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('beforeunload', () => {
     if (control.red) control.red.cerrar();
+  });
+
+  // ===== RECONEXIÓN AL VOLVER INTERNET O PESTAÑA =====
+  function intentarReconexion() {
+    if (!control.sala) return;
+    if (control.red) return;
+    const sesion = control.leerSesion();
+    if (sesion) {
+      control.reanudarSesion(sesion).then((ok) => {
+        if (!ok) mostrarInicio();
+      }).catch(() => mostrarInicio());
+    }
+  }
+
+  window.addEventListener('online', () => {
+    const chip = document.getElementById('chip-conexion');
+    if (chip) {
+      chip.classList.add('online');
+      chip.classList.remove('offline');
+      const txt = chip.querySelector('.txt');
+      if (txt) txt.textContent = 'Conectado';
+    }
+    setTimeout(intentarReconexion, 1000);
+  });
+
+  window.addEventListener('offline', () => {
+    const chip = document.getElementById('chip-conexion');
+    if (chip) {
+      chip.classList.remove('online');
+      chip.classList.add('offline');
+      const txt = chip.querySelector('.txt');
+      if (txt) txt.textContent = 'Sin conexión';
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      intentarReconexion();
+    }
   });
 });
