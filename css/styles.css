@@ -1180,3 +1180,80 @@ body {
   margin: 0;
   color: var(--texto-suave);
 }
+
+/* ===== PANTALLA DE INICIO MÓVIL: todo visible, sin cortes ===== */
+@media (max-width: 768px) {
+  #pantalla-inicio {
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tarjeta-inicio {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px 12px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+  }
+
+  .panel {
+    width: 100%;
+  }
+
+  .entrada {
+    font-size: 16px; /* evita zoom automático en iOS al enfocar */
+    padding: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .grid-acciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .btn-grande {
+    padding: 14px;
+    font-size: 1rem;
+    width: 100%;
+  }
+
+  .btn-ancho {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .fila-codigo {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  #input-codigo {
+    flex: 1;
+    font-size: 16px;
+  }
+
+  .enlaces-inicio {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .enlace {
+    width: 100%;
+    text-align: center;
+  }
+
+  .separador {
+    width: 100%;
+    text-align: center;
+    margin: 12px 0;
+  }
+}
