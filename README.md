@@ -42,7 +42,8 @@ Juego de cartas colombiano **4-4-3** multijugador en línea (P2P via WebRTC con 
 
 ```
 index.html                 Punto de entrada: pantallas de inicio, lobby, mesa y sala de espera
-css/styles.css             Estilos (cartas, mesa, asientos, overlay de espera)
+css/styles.css             Estilos base (cartas, mesa, asientos, overlay de espera)
+css/mobile-game.css        Distribución adaptable de mesa y mano para móviles/Android
 js/main.js                 Arranque, navegación de pantallas y salas recientes (localStorage)
 js/controllers/GameController.js  Mediador host-autoritativo (sala, turnos, reinicio, reconexión y migración de anfitrión)
 js/models/Card.js          Definición de carta y baraja

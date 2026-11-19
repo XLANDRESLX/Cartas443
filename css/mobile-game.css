@@ -1,0 +1,276 @@
+/* =====================================================================
+   4-4-3 · Distribución adaptable de la mesa y la mano
+   Se carga después de styles.css para aislar los ajustes de pantalla.
+   No modifica la lógica ni el marcado que utiliza BoardView.js.
+   ===================================================================== */
+
+/* La cabecera ocupa su altura natural; la mesa usa solamente el espacio restante. */
+html,
+body {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#app {
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#cabecera {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+#mesa {
+  flex: 1 1 0%;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* El tapete es el panel flexible. No debe desplazar la zona de cartas fuera de pantalla. */
+#tapete {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  justify-content: space-between;
+}
+
+#asientos {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 0;
+  max-height: 42%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-content: center;
+}
+
+#centro {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 70px;
+  align-items: center;
+}
+
+/* La mano queda anclada debajo del tapete y siempre conserva su altura. */
+#zona-mano {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+  z-index: 2;
+}
+
+.mano-barra {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.herramientas-mano {
+  min-width: 0;
+}
+
+.mano {
+  width: 100%;
+  min-width: 0;
+  min-height: calc(var(--carta-alto) + 18px);
+  flex: 0 0 auto;
+  justify-content: center;
+  align-items: flex-end;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mano .carta {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  #app {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  #cabecera {
+    gap: 5px;
+    padding: 3px 2px;
+  }
+
+  .marca { gap: 6px; }
+  .marca .logo { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; }
+  .marca-texto h1 { font-size: 12px; }
+  .marca-texto p { display: none; }
+  .cabecera-acciones { gap: 5px; }
+  .chip { font-size: 10px; padding: 3px 7px; }
+  .btn-icono { min-width: 34px; min-height: 34px; }
+
+  #mesa { gap: 5px; }
+
+  #tapete {
+    padding: 8px;
+    border-width: 4px;
+    border-radius: 22px;
+    gap: 5px;
+    overflow: hidden;
+  }
+
+  #asientos {
+    gap: 5px;
+    max-height: 42%;
+  }
+
+  .ficha {
+    min-width: 0;
+    max-width: 48%;
+    padding: 4px 7px;
+    gap: 6px;
+    border-radius: 11px;
+  }
+
+  .ficha .avatar { width: 29px; height: 29px; font-size: 12px; }
+  .ficha .info .nombre { max-width: 90px; font-size: 11px; }
+  .ficha .info .detalle { font-size: 9px; }
+  .ficha .mini-cartas { display: none; }
+  .btn-salir-mesa { top: 6px; left: 8px; padding: 4px 9px; font-size: 10px; }
+
+  #centro {
+    min-height: 68px;
+    gap: clamp(10px, 3vw, 24px);
+    padding: 2px 0;
+  }
+
+  .pila-zona { gap: 4px; }
+  .lbl-pila { font-size: 9px; padding: 2px 7px; white-space: nowrap; }
+  .globo { min-width: 0; max-width: 145px; padding: 7px 9px; font-size: 10px; border-radius: 12px; }
+  .estado-juego { max-width: 145px; font-size: 9px; line-height: 1.2; }
+
+  #zona-mano {
+    padding: 6px 7px 7px;
+    gap: 4px;
+    border-radius: 14px;
+  }
+
+  .mano-barra {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .mano-titulo {
+    flex: 0 0 auto;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .herramientas-mano {
+    flex: 1 1 auto;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .herramientas-mano::-webkit-scrollbar { display: none; }
+  .herramientas-mano .btn,
+  .herramientas-mano .boton-juego { flex: 0 0 auto; padding: 4px 7px; font-size: 9px; white-space: nowrap; }
+
+  .mano {
+    min-height: calc(var(--carta-alto) + 19px);
+    padding: 14px 8px 5px;
+    justify-content: flex-start;
+    gap: 0;
+  }
+
+  .mano .carta { margin-left: -15px; }
+  .mano .carta:first-child { margin-left: 0; }
+
+  .barra-acciones {
+    min-height: 32px;
+    gap: 5px;
+  }
+
+  .boton-juego { padding: 7px 10px; font-size: 10px; border-radius: 10px; }
+}
+
+/* Teléfonos en vertical: la mano conserva su propia franja y puede desplazarse en horizontal. */
+@media (max-width: 480px) and (orientation: portrait) {
+  :root { --carta-ancho: clamp(29px, 8.5vw, 38px); }
+
+  #asientos { max-height: 35%; padding-top: 26px; }
+  .ficha { max-width: 48%; }
+  #centro { gap: 8px; }
+  .mano .carta { margin-left: -17px; }
+}
+
+/* Modo horizontal y pantallas de poca altura (incluye muchos Android). */
+@media (max-height: 520px) and (orientation: landscape) {
+  :root { --carta-ancho: clamp(27px, 8vh, 36px); }
+
+  #app { padding: 3px 5px; gap: 3px; }
+  #cabecera { min-height: 34px; padding: 1px 2px; }
+  .marca .logo { width: 30px; height: 30px; font-size: 15px; }
+  .marca-texto h1 { font-size: 11px; }
+  .chip { font-size: 9px; padding: 2px 6px; }
+  #mesa { gap: 3px; }
+
+  #tapete {
+    padding: 5px 7px;
+    border-width: 3px;
+    border-radius: 18px;
+    gap: 3px;
+  }
+
+  #asientos { max-height: 44%; gap: 3px; }
+  .ficha { padding: 2px 5px; gap: 4px; border-radius: 8px; }
+  .ficha .avatar { width: 23px; height: 23px; font-size: 10px; }
+  .ficha .info .nombre { max-width: 72px; font-size: 9px; }
+  .ficha .info .detalle { font-size: 8px; }
+
+  #centro { min-height: 54px; gap: 10px; padding: 0; }
+  .globo { max-width: 125px; padding: 5px 7px; font-size: 9px; }
+  .estado-juego { max-width: 125px; font-size: 8px; }
+  .lbl-pila { font-size: 8px; padding: 1px 6px; }
+
+  #zona-mano { padding: 4px 6px 5px; gap: 2px; border-radius: 11px; }
+  .mano-titulo { font-size: 9px; }
+  .herramientas-mano .btn,
+  .herramientas-mano .boton-juego { padding: 3px 6px; font-size: 8px; }
+  .mano { min-height: calc(var(--carta-alto) + 17px); padding: 13px 7px 4px; }
+  .mano .carta { margin-left: -14px; }
+  .barra-acciones { min-height: 27px; gap: 4px; }
+  .boton-juego { padding: 5px 8px; font-size: 9px; border-radius: 8px; }
+}
+
+/* Teléfonos estrechos: se priorizan las cartas y las acciones sobre elementos decorativos. */
+@media (max-width: 360px) {
+  .marca-texto h1 { font-size: 10px; }
+  .chip { font-size: 8px; padding: 2px 5px; }
+  .mano-titulo { font-size: 9px; }
+  .herramientas-mano .btn,
+  .herramientas-mano .boton-juego { padding: 3px 5px; font-size: 8px; }
+  .ficha .info .nombre { max-width: 68px; }
+}

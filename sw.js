@@ -1,9 +1,10 @@
-const CACHE_NAME = 'cartas443-v2';
+const CACHE_NAME = 'cartas443-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/styles.css',
+  './css/mobile-game.css',
   './js/main.js',
   './js/controllers/GameController.js',
   './js/controllers/ChatController.js',
