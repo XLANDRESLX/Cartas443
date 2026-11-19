@@ -10,6 +10,21 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <link rel="stylesheet" href="css/styles.css">
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="assets/img/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="4-4-3">
+  <meta name="theme-color" content="#0b4630">
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.log('SW registro falló:', err);
+      });
+    }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -175,6 +190,15 @@
       </aside>
     </main>
 
+  </div>
+
+  <!-- ===== OVERLAY ROTAR PANTALLA ===== -->
+  <div id="overlay-rotar" class="overlay hidden">
+    <div class="panel rota-aviso">
+      <div class="rota-icono">🔄</div>
+      <h2 class="rota-titulo">Gira tu celular</h2>
+      <p class="rota-texto">Juega en modo horizontal para una mejor experiencia.</p>
+    </div>
   </div>
 
   <!-- ===== OVERLAY SALA DE ESPERA ===== -->
