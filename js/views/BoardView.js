@@ -3,12 +3,28 @@ import { AVATARES } from '../utils/storage.js';
 
 const ORDEN_PALOS = { espadas: 0, corazones: 1, diamantes: 2, treboles: 3 };
 
+
 function crearElementoCarta(carta, opciones = {}) {
   const div = document.createElement('div');
   div.className = 'carta';
   div.dataset.id = carta.id;
+
+  // Identificación de la carta
   if (carta.palo) div.dataset.palo = carta.palo;
-  if (opciones.deshabilitada) div.classList.add('deshabilitada');
+
+  // Accesibilidad y selección
+  div.setAttribute('role', 'button');
+  div.setAttribute('tabindex', '0');
+  div.setAttribute(
+    'aria-label',
+    `Carta ${carta.nombre} de ${carta.palo || 'la baraja'}`
+  );
+
+  // Estados de la carta
+  if (opciones.deshabilitada) {
+    div.classList.add('deshabilitada');
+    div.setAttribute('aria-disabled', 'true');
+  }
 
   const cuerpo = document.createElement('div');
   cuerpo.className = 'cuerpo';
@@ -17,6 +33,7 @@ function crearElementoCarta(carta, opciones = {}) {
     cuerpo.innerHTML = '<div class="dorso"></div>';
   } else {
     const clasePalo = carta.esRoja ? 'palo-rojo' : 'palo-negro';
+
     cuerpo.innerHTML = [
       '<div class="frente">',
       `<div class="esquina ${clasePalo}"><span class="esp-valor">${carta.nombre}</span><span class="esp-palo">${carta.simbolo}</span></div>`,
@@ -29,8 +46,10 @@ function crearElementoCarta(carta, opciones = {}) {
   }
 
   div.appendChild(cuerpo);
+
   return div;
 }
+
 
 const ORDEN_LOCAL = 'orden-mano-';
 

@@ -269,7 +269,12 @@ export class GameController {
     red = new PeerNetwork({
       onMensaje: (datos) => this._procesarMensajeInvitado(datos),
       onConexion: () => {
-        red.enviar({ tipo: 'registro', nombre: this.miNombre, jugadorId: this.jugadorId });
+        red.enviar({
+  tipo: 'registro',
+  nombre: this.miNombre,
+  avatar: obtenerAvatar(),
+  jugadorId: this.jugadorId
+});
         if (!this.enPartida && !this._reconectando) this._mostrarEspera();
       },
       onDesconexion: () => this._manejarDesconexion(),
@@ -422,9 +427,11 @@ export class GameController {
         color: this._colorDe(j.numero),
         // Sólo el avatar local viene del perfil; el de los demás se deriva
         // del número para no alterar el protocolo P2P.
-        avatar: j.numero === this.miNumero
-          ? obtenerAvatar()
-          : AVATARES[(j.numero - 1) % AVATARES.length],
+                avatar: j.avatar || (
+          j.numero === this.miNumero
+            ? obtenerAvatar()
+            : AVATARES[(j.numero - 1) % AVATARES.length]
+        ),
         esHost: j.numero === this.hostNumero,
       }));
     this.ui.actualizarEspera({
@@ -546,6 +553,7 @@ export class GameController {
           numero: k.numero,
           nombre: k.nombre,
           color: this._colorDe(k.numero),
+          avatar: k.avatar || AVATARES[(k.numero - 1) % AVATARES.length],
           esHost: k.numero === this.hostNumero,
         })),
       });
@@ -557,6 +565,58 @@ export class GameController {
   _procesarMensajeHost(datos, clave) {
     if (!datos) return;
 
+
+if (datos.tipo === 'abandono_fin') {
+  this._desconectado = true;
+  this._limpiarReconexion();
+  this._reiniciarChat();
+  this._borrarSesion();
+
+  this.ui.cerrarModales();
+
+  const redAnterior = this.red;
+  this.red = null;
+
+  if (redAnterior) {
+    try { redAnterior.cerrar(); } catch (e) {}
+  }
+
+  this.ui.alerta(
+    'Partida finalizada',
+    `${datos.nombre || 'Un jugador'} abandonó la partida. No quedan suficientes jugadores para continuar.`
+  ).then(() => {
+    if (this.onSalirAlInicio) this.onSalirAlInicio();
+  });
+
+  return;
+}
+
+if (datos.tipo === 'sala_cancelada') {
+  this._desconectado = true;
+  this._limpiarReconexion();
+  this._reiniciarChat();
+  this._borrarSesion();
+
+  this.ui.cerrarModales();
+
+  const redAnterior = this.red;
+  this.red = null;
+
+  if (redAnterior) {
+    try { redAnterior.cerrar(); } catch (e) {}
+  }
+
+  this.ui.alerta(
+    'Sala cancelada',
+    'El anfitrión abandonó la sala. La conexión ha finalizado.'
+  ).then(() => {
+    if (this.onSalirAlInicio) this.onSalirAlInicio();
+  });
+
+  return;
+}
+
+
     if (datos.tipo === 'registro') {
       const jid = datos.jugadorId || null;
       const existente = jid ? this.jugadores.find((j) => j.jugadorId === jid) : null;
@@ -566,6 +626,9 @@ export class GameController {
         existente.clave = clave;
         existente.conectado = true;
         if (datos.nombre) existente.nombre = datos.nombre;
+        if (datos.avatar && AVATARES.includes(datos.avatar)) {
+  existente.avatar = datos.avatar;
+}
         this._clavePorNumero.set(existente.numero, clave);
         this._cancelarDesconexion(existente.numero);
         if (estabaDesconectado) this.ui.toast(`${existente.nombre} se reconectó.`, 'success');
@@ -596,6 +659,7 @@ export class GameController {
         clave,
         numero,
         nombre: datos.nombre || `Jugador ${numero}`,
+        avatar: AVATARES.includes(datos.avatar) ? datos.avatar : AVATARES[(numero - 1) % AVATARES.length],
         conectado: true,
         jugadorId: jid || this._nuevoJugadorId(),
       });
@@ -635,8 +699,7 @@ export class GameController {
       return;
     }
     if (datos.tipo === 'abandonar') {
-      this._hostDesconexion(clave);
-      this._expirarDesconexion(jugador.numero);
+      this._procesarAbandonoVoluntario(jugador.numero, clave);
       return;
     }
   }
@@ -653,6 +716,32 @@ export class GameController {
 
   _procesarMensajeInvitado(datos) {
     if (!datos) return;
+
+        // El anfitrión canceló voluntariamente una sala de dos jugadores.
+    if (datos.tipo === 'sala_cancelada') {
+      this._desconectado = true;
+      this._limpiarReconexion();
+      this._reiniciarChat();
+      this._borrarSesion();
+
+      this.ui.cerrarModales();
+
+      const redAnterior = this.red;
+      this.red = null;
+
+      if (redAnterior) {
+        try { redAnterior.cerrar(); } catch (e) {}
+      }
+
+      this.ui.alerta(
+        'Sala cancelada',
+        'El anfitrión abandonó la sala. La partida ha finalizado.'
+      ).then(() => {
+        if (this.onSalirAlInicio) this.onSalirAlInicio();
+      });
+
+      return;
+    }
 
     if (datos.tipo === 'chat:message') {
       if (datos.sala && datos.sala !== this.sala) return;
@@ -681,6 +770,7 @@ export class GameController {
     }
     if (datos.tipo === 'inicio') {
       this.enPartida = true;
+      document.body.classList.add('partida-activa');
       this.ui.cerrarModales();
       this._aplicarEstado(datos.estado);
       return;
@@ -721,6 +811,7 @@ export class GameController {
         numero: j.numero,
         nombre: j.nombre,
         color: this._colorDe(j.numero),
+        avatar: j.avatar || AVATARES[(j.numero - 1) % AVATARES.length],
         esHost: j.numero === this.hostNumero,
         conectado: j.conectado !== false,
         jugadorId: j.jugadorId || null,
@@ -976,6 +1067,68 @@ export class GameController {
   }
 
   // ===== DESCONEXIÓN DE JUGADORES (HOST) =====
+
+  
+_procesarAbandonoVoluntario(numero, clave) {
+  if (!this.esHost) return;
+
+  const jugador = this.jugadores.find(j => j.numero === numero);
+  if (!jugador) return;
+
+  this._cancelarDesconexion(numero);
+  this._clavePorNumero.delete(numero);
+
+  jugador.conectado = false;
+
+  // Si todavía estamos en la sala de espera, basta con retirar al jugador.
+  if (!this.modelo) {
+    this.jugadores = this.jugadores.filter(j => j.numero !== numero);
+    this._difundirSala();
+    this._actualizarEspera();
+    this.ui.toast(`${jugador.nombre} abandonó la sala.`, 'warning');
+    return;
+  }
+
+  // Retirar al jugador de la partida.
+  this.modelo.quitarJugador(numero);
+  this.jugadores = this.jugadores.filter(j => j.numero !== numero);
+
+  const restantes = this.jugadores.filter(j => j.conectado);
+
+  // Si queda un solo jugador, finalizar por abandono, NO por empate.
+  if (restantes.length < MIN_JUGADORES) {
+    this.modelo.fase = 'fin';
+    this.modelo.ganador = null;
+
+    // Aviso específico para el jugador que permanece.
+    for (const j of restantes) {
+      if (j.clave) {
+        this.red.enviarA(j.clave, {
+          tipo: 'abandono_fin',
+          nombre: jugador.nombre
+        });
+      }
+    }
+
+    this.ui.toast(
+      `${jugador.nombre} abandonó la partida. La partida ha terminado.`,
+      'warning'
+    );
+
+    return;
+  }
+
+  // Si quedan al menos dos jugadores, continuar la partida.
+  this._compactarNumeros();
+  this._broadcast();
+
+  this.ui.toast(
+    `${jugador.nombre} abandonó la partida. El juego continúa.`,
+    'warning'
+  );
+}
+
+
 
   _iniciarDesconexion(numero, nombre) {
     this._cancelarDesconexion(numero);
@@ -1321,22 +1474,80 @@ export class GameController {
     this._salir();
   }
 
-  _salir() {
-    this._limpiarReconexion();
-    this._cancelarTodasDesconexiones();
-    this._reiniciarChat();
-    if (!this.esHost && this.red) {
-      try { this.red.enviar({ tipo: 'abandonar' }); } catch (e) { /* ignorar */ }
+  
+
+async _salir() {
+  // Evitar reconexiones mientras se realiza la salida.
+  this._desconectado = true;
+
+  this._limpiarReconexion();
+  this._cancelarTodasDesconexiones();
+  this._reiniciarChat();
+
+  const redAnterior = this.red;
+  const salaAnterior = this.sala;
+
+  // Contar jugadores conectados antes de cerrar la red.
+  const conectados = this.jugadores.filter(j => j.conectado);
+
+  this.red = null;
+
+  if (redAnterior) {
+    try {
+      if (this.esHost) {
+        // Si hay menos de 3 jugadores, la sala no puede continuar.
+        if (conectados.length < 3) {
+          redAnterior.enviar({
+            tipo: 'sala_cancelada'
+          });
+
+          // Dar tiempo a PeerJS para transmitir el aviso.
+          await this._esperar(250);
+        }
+
+        // Con 3 o más jugadores se permite la migración
+        // mediante el mecanismo existente de reconexión.
+      } else {
+        // Avisar al anfitrión del abandono voluntario.
+        redAnterior.enviar({
+          tipo: 'abandonar'
+        });
+
+        // Evitar cerrar el canal inmediatamente después de enviar.
+        await this._esperar(250);
+      }
+    } catch (e) {
+      // La conexión podría estar caída.
     }
-    this.ui.cerrarModales();
-    if (this.red) this.red.cerrar();
-    this.red = null;
-    this.enPartida = false;
-    this.jugadores = [];
-    this.modelo = null;
-    this.snapshot = null;
-    this._borrarSesion();
-    this._actualizarChipConexion(false);
-    if (this.onSalirAlInicio) this.onSalirAlInicio();
+
+    try {
+      redAnterior.cerrar();
+    } catch (e) {}
   }
+
+  this._borrarSesion();
+
+  try {
+    if (salaAnterior) {
+      localStorage.removeItem(this._claveSnapshot(salaAnterior));
+    }
+  } catch (e) {}
+
+  // Limpiar el estado local.
+  this.enPartida = false;
+  document.body.classList.remove('partida-activa');
+  this.jugadores = [];
+  this.modelo = null;
+  this.snapshot = null;
+  this.sala = '';
+  this.miNumero = 0;
+  this.esHost = false;
+
+  this._actualizarChipConexion(false);
+
+  if (this.onSalirAlInicio) {
+    this.onSalirAlInicio();
+  }
+}
+
 }

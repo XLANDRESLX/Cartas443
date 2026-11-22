@@ -380,3 +380,9 @@ svg {
 
 .swal-reglas p { margin: 0 0 10px; }
 .swal-reglas ul { margin: 0 0 10px; padding-left: 20px; }
+
+
+/* Ocultar cabecera global durante la partida */
+body.partida-activa #cabecera {
+  display: none !important;
+}

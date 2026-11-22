@@ -1,0 +1,210 @@
+
+/* =========================================
+   CARTAS 4-4-3
+   Cartas individuales y adaptables
+========================================= */
+
+.pantalla-partida {
+  --carta-ancho: clamp(46px, 5.2vw, 68px);
+  --carta-alto: calc(var(--carta-ancho) * 1.42);
+  --carta-solape: clamp(2px, 2vw, 27px);
+}
+
+/* Cada carta conserva sus dimensiones */
+.pantalla-partida .carta {
+  width: var(--carta-ancho);
+  min-width: var(--carta-ancho);
+  max-width: var(--carta-ancho);
+  height: var(--carta-alto);
+  flex: 0 0 var(--carta-ancho);
+  box-sizing: border-box;
+  overflow: visible;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Los elementos internos no interceptan los toques */
+.pantalla-partida .carta .cuerpo,
+.pantalla-partida .carta .frente,
+.pantalla-partida .carta .frente::before,
+.pantalla-partida .carta .esquina,
+.pantalla-partida .carta .palo-centro,
+.pantalla-partida .carta .valor-centro,
+.pantalla-partida .carta .muesca {
+  pointer-events: none;
+}
+
+.pantalla-partida .carta .cuerpo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.pantalla-partida .carta .frente {
+  position: absolute;
+  inset: 0;
+  padding: 7% 8%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Símbolo central */
+.pantalla-partida .carta .palo-centro {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  translate: -50% -50%;
+  width: 100%;
+  text-align: center;
+  font-size: calc(var(--carta-ancho) * .88);
+  line-height: 1;
+  opacity: .13;
+  z-index: 1;
+}
+
+/* Número principal centrado */
+.pantalla-partida .carta .valor-centro {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  color: #fff;
+  font-size: clamp(25px, calc(var(--carta-ancho) * .62), 46px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.045em;
+  text-shadow: 0 2px 0 rgba(0,0,0,.18), 0 4px 9px rgba(0,0,0,.14);
+  white-space: nowrap;
+}
+
+/* Esquina superior */
+.pantalla-partida .carta .esquina {
+  position: absolute;
+  z-index: 3;
+  top: 6%;
+  left: 8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  color: #fff;
+  line-height: .9;
+  text-shadow: 0 1px 2px rgba(0,0,0,.2);
+}
+
+.pantalla-partida .carta .esquina .esp-valor {
+  font-size: clamp(11px, calc(var(--carta-ancho) * .25), 18px);
+  font-weight: 900;
+}
+
+.pantalla-partida .carta .esquina .esp-palo {
+  font-size: clamp(9px, calc(var(--carta-ancho) * .19), 14px);
+  line-height: 1;
+}
+
+/* Esquina inferior invertida */
+.pantalla-partida .carta .esquina.inferior {
+  top: auto;
+  left: auto;
+  right: 8%;
+  bottom: 6%;
+  transform: rotate(180deg);
+}
+
+/* Mano del jugador */
+.pantalla-partida .mano {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: safe center;
+  min-width: 0;
+  min-height: calc(var(--carta-alto) + 24px);
+  padding: 19px 12px 5px;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,226,154,.35) transparent;
+}
+
+/* Superposición controlada */
+.pantalla-partida .mano .carta {
+  margin-left: calc(var(--carta-solape) * -1);
+  flex-shrink: 0;
+  scroll-snap-align: center;
+}
+
+.pantalla-partida .mano .carta:first-child {
+  margin-left: 0;
+}
+
+/* Selección de carta completa */
+.pantalla-partida .mano .carta.seleccionada {
+  z-index: 60;
+  transform: translateY(-13px) scale(1.06);
+}
+
+.pantalla-partida .mano .carta.seleccionada:hover {
+  transform: translateY(-13px) scale(1.06);
+}
+
+.pantalla-partida .carta.arrastrada {
+  z-index: 70;
+}
+
+/* CELULARES */
+@media (max-width: 600px) {
+  .pantalla-partida {
+    --carta-ancho: clamp(46px, 14.4vw, 54px);
+    --carta-alto: calc(var(--carta-ancho) * 1.42);
+    --carta-solape: clamp(19px, 6.2vw, 23px);
+  }
+
+  .pantalla-partida .mano {
+    justify-content: flex-start;
+    min-height: calc(var(--carta-alto) + 22px);
+    padding: 18px 9px 5px;
+  }
+
+  .pantalla-partida .carta .valor-centro {
+    font-size: clamp(27px, calc(var(--carta-ancho) * .62), 34px);
+  }
+}
+
+/* CELULARES MUY PEQUEÑOS */
+@media (max-width: 360px) {
+  .pantalla-partida {
+    --carta-ancho: 46px;
+    --carta-alto: 65.32px;
+    --carta-solape: 19px;
+  }
+}
+
+/* MONITORES GRANDES */
+@media (min-width: 1100px) {
+  .pantalla-partida {
+    --carta-ancho: clamp(66px, 5.2vw, 78px);
+    --carta-alto: calc(var(--carta-ancho) * 1.42);
+    --carta-solape: clamp(25px, 2vw, 30px);
+  }
+}
+
+/* CELULAR EN POSICIÓN HORIZONTAL */
+@media (max-height: 520px) and (orientation: landscape) {
+  .pantalla-partida {
+    --carta-ancho: clamp(42px, 8vh, 54px);
+    --carta-alto: calc(var(--carta-ancho) * 1.42);
+    --carta-solape: 20px;
+  }
+
+  .pantalla-partida .mano {
+    min-height: calc(var(--carta-alto) + 18px);
+    padding-top: 15px;
+  }
+}
+
