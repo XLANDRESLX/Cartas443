@@ -1,0 +1,1380 @@
+/* =====================================================================
+   4-4-3 · Mesa de partida
+   Rediseño visual inspirado en la referencia: madera cálida, mesa
+   circular con aro dorado, asientos con avatar/placa, mazo y descarte
+   centrales, mano grande y controles a los lados.
+   Solo afecta a #pantalla-partida. No cambia lógica ni protocolo.
+   ===================================================================== */
+
+.pantalla-partida {
+  --mt-madera-1: #8a4a28;
+  --mt-madera-2: #6b341c;
+  --mt-madera-3: #4a2010;
+  --mt-madera-4: #2a1008;
+  --mt-oro: #f5b942;
+  --mt-oro-claro: #ffe29a;
+  --mt-crema: #fff3dc;
+  --mt-tinta: #2a1008;
+  --carta-ancho: clamp(44px, 12.2vw, 88px);
+  --carta-alto: calc(var(--carta-ancho) * 1.42);
+  --carta-solape: clamp(20px, 4.8vw, 30px);
+  --carta-centro-ancho: clamp(48px, 9vw, 96px);
+  --carta-centro-alto: calc(var(--carta-centro-ancho) * 1.42);
+  --indicador-reserva: 34px;
+
+  position: relative;
+  color: var(--mt-crema);
+  background:
+    radial-gradient(120% 90% at 50% 24%, rgba(255, 178, 86, 0.14), transparent 58%),
+    radial-gradient(100% 80% at 50% 115%, rgba(0, 0, 0, 0.55), transparent 62%),
+    repeating-linear-gradient(93deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 8px),
+    linear-gradient(160deg, #4f2413, #32140a 62%, #1d0a04);
+}
+
+body:has(#pantalla-partida:not(.hidden)) #app {
+  grid-template-columns: minmax(0, 1fr);
+  background:
+    radial-gradient(120% 90% at 50% 24%, rgba(255, 178, 86, 0.14), transparent 58%),
+    repeating-linear-gradient(93deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 8px),
+    linear-gradient(160deg, #4f2413, #32140a 62%, #1d0a04);
+}
+
+.pantalla-partida {
+  width: 100%;
+  min-width: 0;
+}
+
+body:has(#pantalla-partida:not(.hidden)) #cabecera {
+  background: linear-gradient(180deg, rgba(32, 13, 6, 0.97), rgba(32, 13, 6, 0.72) 72%, transparent);
+  border-bottom: 1px solid rgba(245, 185, 66, 0.16);
+  backdrop-filter: blur(6px);
+}
+
+body:has(#pantalla-partida:not(.hidden)) #cabecera .chip {
+  border-color: rgba(245, 185, 66, 0.3);
+  background: rgba(20, 8, 4, 0.72);
+  color: #ffe9c9;
+}
+
+body:has(#pantalla-partida:not(.hidden)) #cabecera .btn-icono {
+  border-color: rgba(245, 185, 66, 0.42);
+  background: linear-gradient(180deg, rgba(74, 32, 16, 0.95), rgba(36, 14, 6, 0.98));
+  color: #ffe9c9;
+}
+
+body:has(#pantalla-partida:not(.hidden)) #cabecera .perfil-mini {
+  border-color: rgba(245, 185, 66, 0.3);
+  background: rgba(20, 8, 4, 0.7);
+}
+
+body:has(#pantalla-partida:not(.hidden)) #cabecera .marca-texto h1 {
+  color: #ffe9c9;
+}
+
+.pantalla-partida #mesa {
+  min-width: 0;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  background: transparent;
+}
+
+.pantalla-partida .mesa-escenario {
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  background:
+    radial-gradient(78% 68% at 50% 44%, rgba(255, 176, 84, 0.1), transparent 68%),
+    radial-gradient(100% 100% at 50% 50%, transparent 54%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.pantalla-partida .mesa-escenario::before {
+  background: radial-gradient(70% 62% at 50% 44%, transparent 46%, rgba(0, 0, 0, 0.22) 100%);
+}
+
+/* ===== Mesa circular ===== */
+
+.pantalla-partida .tapete {
+  width: min(100%, calc(100dvh - var(--cabecera-alto) - var(--mano-reservada) - var(--indicador-reserva) - 22px), 760px);
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+  border: clamp(8px, 1.4vw, 16px) solid #35170b;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 196, 132, 0.24) 0%, transparent 46%),
+    repeating-linear-gradient(88deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(2deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 9px),
+    radial-gradient(circle at 50% 46%, #a85a32 0%, #8b4626 54%, #6d341c 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 224, 170, 0.18),
+    inset 0 0 60px rgba(0, 0, 0, 0.34),
+    0 0 0 2px rgba(255, 205, 95, 0.62),
+    0 0 30px rgba(255, 170, 60, 0.4),
+    0 28px 60px rgba(0, 0, 0, 0.5);
+}
+
+.pantalla-partida .tapete::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 12deg,
+    rgba(255, 206, 90, 0.5) 28deg,
+    #ffd75e 46deg,
+    #fff2b0 62deg,
+    #ffc23c 82deg,
+    transparent 104deg 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+  filter: drop-shadow(0 0 10px rgba(255, 190, 60, 0.85));
+  pointer-events: none;
+  animation: arcoRespira 4.5s ease-in-out infinite;
+}
+
+@keyframes arcoRespira {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
+}
+
+.pantalla-partida .tapete::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 4.5%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 230, 190, 0.13);
+  box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+/* ===== Estrellas y flechas decorativas ===== */
+
+.pantalla-partida .mesa-arco,
+.pantalla-partida .mesa-flechas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.pantalla-partida .mesa-arco span {
+  position: absolute;
+  color: #ffd45a;
+  font-size: clamp(8px, 1.6vw, 14px);
+  line-height: 1;
+  transform: translate(-50%, -50%) rotate(16deg);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 5px rgba(255, 200, 70, 0.9));
+}
+
+.pantalla-partida .mesa-arco span:nth-child(1) { top: 19%; left: 68%; }
+.pantalla-partida .mesa-arco span:nth-child(2) { top: 27%; left: 77.5%; }
+.pantalla-partida .mesa-arco span:nth-child(3) { top: 38%; left: 83.7%; }
+.pantalla-partida .mesa-arco span:nth-child(4) { top: 50%; left: 86%; }
+.pantalla-partida .mesa-arco span:nth-child(5) { top: 62%; left: 83.7%; }
+.pantalla-partida .mesa-arco span:nth-child(6) { top: 73%; left: 77.5%; }
+.pantalla-partida .mesa-arco span:nth-child(7) { top: 81%; left: 68%; }
+
+.pantalla-partida .mesa-flechas span {
+  position: absolute;
+  z-index: 1;
+  color: #ffcf6a;
+  font-size: clamp(16px, 3.2vw, 28px);
+  line-height: 1;
+  opacity: 0.85;
+  text-shadow: 0 0 8px rgba(255, 170, 50, 0.85), 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.pantalla-partida .mesa-flechas span:nth-child(1) { top: 17%; left: 15%; transform: rotate(35deg); }
+.pantalla-partida .mesa-flechas span:nth-child(2) { top: 17%; right: 15%; transform: rotate(125deg); }
+.pantalla-partida .mesa-flechas span:nth-child(3) { bottom: 17%; right: 15%; transform: rotate(215deg); }
+.pantalla-partida .mesa-flechas span:nth-child(4) { bottom: 17%; left: 15%; transform: rotate(305deg); }
+
+/* ===== Asientos ===== */
+
+.pantalla-partida .ficha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: max-content;
+  max-width: 40%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--mt-crema);
+  pointer-events: none;
+  transition: none;
+}
+
+.pantalla-partida .ficha[data-pos="left"],
+.pantalla-partida .ficha[data-pos="right"] {
+  max-width: 23%;
+}
+
+.pantalla-partida .ficha[data-pos="top"] {
+  top: 2%;
+  left: 50%;
+  translate: -50% 0;
+}
+
+.pantalla-partida .ficha[data-pos="bottom"] {
+  bottom: 2%;
+  left: 50%;
+  translate: -50% 0;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.pantalla-partida .ficha[data-pos="left"] {
+  top: 50%;
+  left: 1.5%;
+  translate: 0 -50%;
+}
+
+.pantalla-partida .ficha[data-pos="right"] {
+  top: 50%;
+  right: 1.5%;
+  translate: 0 -50%;
+}
+
+.pantalla-partida .ficha .avatar {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: clamp(34px, 5.2vw, 56px);
+  height: clamp(34px, 5.2vw, 56px);
+  flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  font-size: clamp(15px, 2.6vw, 24px);
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 0 0 3px var(--jug-color, #fbbf24),
+    0 0 0 5px rgba(0, 0, 0, 0.32),
+    0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.pantalla-partida .ficha .avatar .corona {
+  position: absolute;
+  top: -10px;
+  right: -7px;
+  font-size: 13px;
+}
+
+.pantalla-partida .ficha .avatar .host-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgba(20, 8, 4, 0.92);
+  font-size: 9px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.pantalla-partida .ficha .info {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 9px 4px;
+  border: 1.5px solid rgba(245, 185, 66, 0.78);
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(34, 14, 7, 0.97), rgba(16, 6, 3, 0.98));
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.pantalla-partida .ficha .nombre {
+  max-width: 100%;
+  overflow: hidden;
+  color: #fff8ec;
+  font-size: clamp(10px, 1.55vw, 15px);
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.pantalla-partida .ficha .detalle {
+  max-width: 100%;
+  overflow: hidden;
+  color: #ffd98a;
+  font-size: clamp(8px, 1.1vw, 11px);
+  font-weight: 700;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pantalla-partida .ficha.es-yo .info {
+  border-color: rgba(255, 214, 120, 0.95);
+  background: linear-gradient(180deg, rgba(70, 34, 14, 0.98), rgba(30, 11, 4, 0.99));
+}
+
+.pantalla-partida .ficha.es-yo .nombre {
+  color: #ffe29a;
+}
+
+.pantalla-partida .ficha.es-turno .avatar {
+  box-shadow:
+    0 0 0 3px #ffd75e,
+    0 0 0 6px rgba(255, 190, 70, 0.22),
+    0 0 24px rgba(255, 180, 60, 0.85),
+    0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.pantalla-partida .ficha.es-turno .info {
+  border-color: #ffd75e;
+  box-shadow:
+    0 0 18px rgba(255, 180, 60, 0.45),
+    0 6px 14px rgba(0, 0, 0, 0.42);
+}
+
+.pantalla-partida .ficha.ganador .info {
+  border-color: #ffe9a8;
+  box-shadow: 0 0 22px rgba(255, 220, 120, 0.6);
+}
+
+.pantalla-partida .ficha.desconectado {
+  opacity: 0.52;
+  filter: grayscale(0.55);
+}
+
+.pantalla-partida .ficha .mini-cartas {
+  position: absolute;
+  z-index: 1;
+  top: -7px;
+  left: 50%;
+  display: flex;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.pantalla-partida .ficha .mini-cartas span {
+  width: clamp(15px, 2.3vw, 24px);
+  height: clamp(21px, 3.2vw, 33px);
+  margin-left: -8px;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.16) 0 4px, rgba(0, 0, 0, 0.08) 4px 8px),
+    linear-gradient(150deg, #e2e2e2, #b4b4b4);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.pantalla-partida .ficha .mini-cartas span:nth-child(1) { transform: rotate(-12deg) translateY(2px); }
+.pantalla-partida .ficha .mini-cartas span:nth-child(2) { transform: rotate(-4deg); }
+.pantalla-partida .ficha .mini-cartas span:nth-child(3) { transform: rotate(4deg); }
+.pantalla-partida .ficha .mini-cartas span:nth-child(4) { transform: rotate(12deg) translateY(2px); }
+
+.pantalla-partida .ficha[data-pos="bottom"] .mini-cartas {
+  display: none;
+}
+
+/* ===== Indicador de turno ===== */
+
+.pantalla-partida #zona-indicador {
+  position: static;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: max-content;
+  max-width: min(92vw, 520px);
+  translate: none;
+  pointer-events: none;
+  text-align: center;
+}
+
+.pantalla-partida .globo {
+  min-width: 0;
+  padding: 5px 14px;
+  border: 1px solid rgba(255, 224, 190, 0.28);
+  border-radius: 999px;
+  background: rgba(40, 16, 7, 0.72);
+  color: #ffe3c2;
+  font-size: clamp(9px, 1.3vw, 13px);
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+  animation: none;
+  backdrop-filter: blur(4px);
+}
+
+.pantalla-partida .globo.acento {
+  border-color: transparent;
+  background: linear-gradient(160deg, #ffd77a, #f0a93a);
+  color: #3a170c;
+  box-shadow: 0 0 18px rgba(255, 180, 60, 0.4);
+}
+
+.pantalla-partida .globo.exito {
+  border-color: transparent;
+  background: linear-gradient(160deg, #b8f0c7, #4ecb75);
+  color: #12331d;
+}
+
+.pantalla-partida .globo.fracaso {
+  border-color: transparent;
+  background: linear-gradient(160deg, #f2a196, #d95743);
+  color: #fff;
+}
+
+.pantalla-partida .globo.empate {
+  border-color: transparent;
+  background: linear-gradient(160deg, #e7ddd2, #b9a99a);
+  color: #3a170c;
+}
+
+.pantalla-partida .estado-juego {
+  display: none;
+}
+
+/* ===== Pilas centrales ===== */
+
+.pantalla-partida .centro {
+  top: 51%;
+  gap: clamp(14px, 3.2vw, 40px);
+  max-width: 90%;
+}
+
+.pantalla-partida #zona-mazo,
+.pantalla-partida #zona-descarte {
+  --carta-ancho: var(--carta-centro-ancho);
+  --carta-alto: var(--carta-centro-alto);
+}
+
+.pantalla-partida .pila-zona {
+  gap: 7px;
+}
+
+.pantalla-partida .pila-clic {
+  position: relative;
+  filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.3));
+}
+
+.pantalla-partida .pila-clic:hover {
+  transform: translateY(-2px) scale(1.03) rotate(-1deg);
+}
+
+.pantalla-partida .lbl-pila {
+  padding: 2px 9px;
+  border: 1px solid rgba(245, 185, 66, 0.5);
+  border-radius: 999px;
+  background: rgba(34, 14, 7, 0.86);
+  color: #ffe9c9;
+  font-size: 9px;
+  font-weight: 800;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.pantalla-partida .pila-mazo {
+  width: var(--carta-centro-ancho);
+  height: var(--carta-centro-alto);
+}
+
+.pantalla-partida .pila-mazo::before,
+.pantalla-partida .pila-mazo::after {
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.16) 0 4px, rgba(0, 0, 0, 0.08) 4px 8px),
+    linear-gradient(150deg, #e6e6e6, #b0b0b0);
+  box-shadow:
+    inset 0 0 0 2px #fff,
+    inset 0 0 0 5px #c2c2c2,
+    0 5px 12px rgba(0, 0, 0, 0.35);
+}
+
+.pantalla-partida .pila-mazo::before { transform: translate(5px, 5px); }
+.pantalla-partida .pila-mazo::after { transform: translate(-4px, -4px); }
+
+.pantalla-partida #btn-mazo .carta {
+  transform: rotate(-2deg);
+}
+
+.pantalla-partida #pila-descarte {
+  width: var(--carta-centro-ancho);
+  height: var(--carta-centro-alto);
+}
+
+.pantalla-partida #pila-descarte .respaldos > div {
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.14) 0 4px, rgba(0, 0, 0, 0.08) 4px 8px),
+    linear-gradient(150deg, #dcdcdc, #a8a8a8);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.pantalla-partida #pila-descarte > .carta {
+  transform: rotate(-5deg);
+  animation: descarteEntra 0.24s ease both;
+}
+
+@keyframes descarteEntra {
+  from { opacity: 0; transform: translateY(-10px) rotate(-9deg) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) rotate(-5deg) scale(1); }
+}
+
+/* ===== Cartas ===== */
+
+.pantalla-partida .carta {
+  border: clamp(3px, 0.42vw, 5px) solid #fff;
+  border-radius: clamp(10px, 1.5vw, 15px);
+  background: #fff;
+  box-shadow:
+    0 4px 0 rgba(40, 16, 7, 0.22),
+    0 9px 16px rgba(0, 0, 0, 0.28);
+}
+
+.pantalla-partida .carta .cuerpo {
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.pantalla-partida .carta .frente {
+  border-radius: inherit;
+  padding: 7% 8%;
+  color: #fff;
+  box-shadow: none;
+}
+
+.pantalla-partida .carta .frente::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(90% 70% at 24% 12%, rgba(255, 255, 255, 0.34), transparent 58%),
+    linear-gradient(180deg, transparent 58%, rgba(0, 0, 0, 0.14));
+  pointer-events: none;
+}
+
+.pantalla-partida .carta[data-palo="corazones"] .frente {
+  background: linear-gradient(155deg, #f06060, #d42f38);
+}
+
+.pantalla-partida .carta[data-palo="diamantes"] .frente {
+  background: linear-gradient(155deg, #5aa4f2, #2a6bd0);
+}
+
+.pantalla-partida .carta[data-palo="treboles"] .frente {
+  background: linear-gradient(155deg, #4fbf73, #26984f);
+}
+
+.pantalla-partida .carta[data-palo="espadas"] .frente {
+  background: linear-gradient(155deg, #6578e0, #303f9e);
+}
+
+.pantalla-partida .carta .muesca {
+  display: none;
+}
+
+.pantalla-partida .carta .esquina {
+  position: relative;
+  z-index: 3;
+  align-items: flex-start;
+  color: #fff;
+  line-height: 0.9;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+}
+
+.pantalla-partida .carta .esquina.inferior {
+  align-items: flex-end;
+}
+
+.pantalla-partida .carta .esquina .esp-valor {
+  font-size: calc(var(--carta-ancho) * 0.3);
+  font-weight: 900;
+}
+
+.pantalla-partida .carta .esquina .esp-palo {
+  font-size: calc(var(--carta-ancho) * 0.2);
+  line-height: 1;
+}
+
+.pantalla-partida .carta .palo-centro {
+  top: 55%;
+  left: 55%;
+  color: #fff;
+  font-size: calc(var(--carta-ancho) * 0.98);
+  opacity: 0.16;
+  text-shadow: none;
+}
+
+.pantalla-partida .carta .valor-centro {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: calc(var(--carta-ancho) * 0.64);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+.pantalla-partida .carta .dorso {
+  border-radius: inherit;
+  background:
+    radial-gradient(70% 55% at 30% 16%, rgba(255, 255, 255, 0.5), transparent 62%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0 5px, rgba(0, 0, 0, 0.05) 5px 10px),
+    linear-gradient(150deg, #ededed, #b9b9b9);
+  box-shadow:
+    inset 0 0 0 2px #fff,
+    inset 0 0 0 5px #c6c6c6;
+}
+
+.pantalla-partida .carta .dorso::before {
+  content: "4-4-3";
+  color: rgba(90, 90, 90, 0.82);
+  font-size: calc(var(--carta-ancho) * 0.17);
+  letter-spacing: 2px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.pantalla-partida .carta.seleccionada {
+  transform: translateY(-16px) scale(1.05);
+  box-shadow:
+    0 0 0 4px var(--mt-oro),
+    0 16px 26px rgba(0, 0, 0, 0.38);
+}
+
+.pantalla-partida .carta.seleccionada:hover {
+  transform: translateY(-18px) scale(1.07);
+}
+
+.pantalla-partida .carta.deshabilitada {
+  filter: saturate(0.55) brightness(0.82);
+}
+
+.pantalla-partida .carta.arrastrada {
+  opacity: 0.24;
+}
+
+/* ===== Zona inferior: mano y controles ===== */
+
+.pantalla-partida .zona-mano {
+  min-width: 0;
+  max-width: 100%;
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(86px, 1fr) minmax(0, auto) minmax(86px, 1fr);
+  grid-template-areas:
+    "barra barra barra"
+    "izq mano der";
+  align-items: end;
+  gap: 4px 10px;
+  padding: 4px clamp(8px, 1.6vw, 16px) calc(7px + var(--safe-bottom));
+  border-top: 0;
+  background: linear-gradient(180deg, transparent, rgba(30, 12, 6, 0.35) 24%, rgba(20, 8, 4, 0.86));
+  box-shadow: none;
+}
+
+.pantalla-partida .mano-barra {
+  grid-area: barra;
+  justify-content: center;
+  min-height: 16px;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.pantalla-partida .mano-titulo {
+  color: #ffe3c2;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.pantalla-partida .mano-titulo #mano-contador {
+  color: rgba(255, 227, 194, 0.62);
+  font-weight: 600;
+}
+
+.pantalla-partida .mano {
+  grid-area: mano;
+  justify-content: center;
+  justify-content: safe center;
+  min-height: calc(var(--carta-alto) + 22px);
+  padding: 18px 8px 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.pantalla-partida .mano::-webkit-scrollbar {
+  display: none;
+}
+
+.pantalla-partida .mano .carta {
+  margin-left: calc(var(--carta-solape) * -1);
+  scroll-snap-align: center;
+}
+
+.pantalla-partida .mano .carta:first-child {
+  margin-left: 0;
+}
+
+.pantalla-partida .mano::after {
+  content: "";
+  flex: 0 0 2px;
+}
+
+.pantalla-partida .mano.vacio::after {
+  content: "Sin cartas en tu mano";
+  flex: 0 0 auto;
+  padding: 20px 8px;
+  color: rgba(255, 235, 214, 0.5);
+  font-size: 11px;
+}
+
+.pantalla-partida .acciones-lado {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pantalla-partida #acciones-izquierda {
+  grid-area: izq;
+  justify-self: start;
+  align-self: end;
+}
+
+.pantalla-partida .lado-derecho {
+  grid-area: der;
+  justify-self: end;
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pantalla-partida .fila-derecha {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.pantalla-partida .herramientas-mano {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.pantalla-partida .boton-juego {
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 1px solid rgba(245, 185, 66, 0.72);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(62, 27, 13, 0.96), rgba(32, 12, 5, 0.98));
+  color: #ffe9c9;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
+}
+
+.pantalla-partida .boton-juego:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(245, 185, 66, 0.18);
+}
+
+.pantalla-partida .boton-juego:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.pantalla-partida .boton-juego:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
+}
+
+.pantalla-partida .boton-accion {
+  border-color: rgba(255, 208, 120, 0.85);
+  background: linear-gradient(180deg, #8a4526, #5a2915);
+  color: #fff3dc;
+}
+
+.pantalla-partida .boton-estilo {
+  border-color: rgba(245, 185, 66, 0.55);
+  background: linear-gradient(180deg, rgba(48, 20, 10, 0.98), rgba(26, 10, 4, 0.99));
+}
+
+.pantalla-partida .boton-peligro {
+  border-color: rgba(239, 138, 107, 0.7);
+  background: linear-gradient(180deg, #a43a2a, #6d2118);
+  color: #fff;
+}
+
+.pantalla-partida .boton-ganador {
+  border-color: #ffe9a8;
+  background: linear-gradient(160deg, #ffe08a, #f0a93a);
+  color: #3a170c;
+  animation: brilloBoton 1.8s ease-in-out infinite;
+}
+
+@keyframes brilloBoton {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 185, 66, 0.25), 0 4px 10px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 20px rgba(245, 185, 66, 0.6), 0 4px 10px rgba(0, 0, 0, 0.35); }
+}
+
+.pantalla-partida .btn-mini {
+  min-height: 23px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 9.5px;
+}
+
+.pantalla-partida .boton-salir-mano {
+  min-height: 32px;
+  padding: 5px 10px;
+  border-color: rgba(239, 138, 107, 0.55);
+  background: linear-gradient(180deg, rgba(62, 27, 13, 0.96), rgba(32, 12, 5, 0.98));
+}
+
+.pantalla-partida .turno-espera {
+  align-self: center;
+  padding: 6px 11px;
+  border: 1px solid rgba(245, 185, 66, 0.35);
+  border-radius: 999px;
+  background: rgba(34, 14, 7, 0.78);
+  color: rgba(255, 235, 214, 0.78);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ===== Chat de partida ===== */
+
+.pantalla-partida .chat-widget {
+  position: fixed;
+  z-index: 1450;
+  top: 8px;
+  right: max(12px, calc((100vw - 1440px) / 2 + 12px));
+  bottom: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.pantalla-partida .chat-btn {
+  width: 46px;
+  height: 46px;
+  border: 2px solid var(--mt-oro);
+  background: linear-gradient(160deg, #8a4526, #4a2010);
+  color: #ffe9c9;
+  font-size: 20px;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.5),
+    0 0 0 4px rgba(245, 185, 66, 0.12);
+}
+
+.pantalla-partida .chat-btn:hover {
+  filter: brightness(1.12);
+}
+
+.pantalla-partida .chat-panel {
+  width: min(340px, calc(100vw - 24px));
+  height: auto;
+  max-height: min(58dvh, calc(100dvh - var(--cabecera-alto) - 150px));
+  border: 2px solid rgba(245, 185, 66, 0.7);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(42, 18, 9, 0.99), rgba(22, 9, 4, 0.995));
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.pantalla-partida .chat-cabecera {
+  background: linear-gradient(180deg, rgba(138, 69, 38, 0.95), rgba(52, 22, 10, 0.97));
+  border-bottom: 1px solid rgba(245, 185, 66, 0.3);
+}
+
+.pantalla-partida .chat-titulo {
+  color: #ffe9c9;
+}
+
+.pantalla-partida .chat-conectados {
+  color: #b8f0c7;
+}
+
+.pantalla-partida .chat-cerrar {
+  border-color: rgba(245, 185, 66, 0.4);
+  background: rgba(20, 8, 4, 0.45);
+  color: #ffe9c9;
+}
+
+.pantalla-partida .chat-cerrar:hover {
+  background: rgba(239, 138, 107, 0.32);
+}
+
+.pantalla-partida .chat-mensajes {
+  background:
+    radial-gradient(500px 220px at 50% 0%, rgba(212, 122, 69, 0.16), transparent 70%),
+    rgba(30, 12, 6, 0.6);
+  scrollbar-color: rgba(245, 185, 66, 0.35) transparent;
+}
+
+.pantalla-partida .chat-fila.ajeno .chat-burbuja {
+  border-color: rgba(245, 185, 66, 0.24);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.pantalla-partida .chat-fila.propio .chat-burbuja {
+  border-color: rgba(255, 208, 120, 0.35);
+  background: linear-gradient(160deg, #b05a2e, #7a3418);
+}
+
+.pantalla-partida .chat-form {
+  background: rgba(30, 12, 6, 0.98);
+  border-top: 1px solid rgba(245, 185, 66, 0.24);
+}
+
+.pantalla-partida .chat-input {
+  border-color: rgba(245, 185, 66, 0.3);
+  background: rgba(18, 7, 3, 0.82);
+  color: #fff3dc;
+}
+
+.pantalla-partida .chat-input:focus {
+  border-color: var(--mt-oro);
+  box-shadow: 0 0 0 3px rgba(245, 185, 66, 0.12);
+}
+
+.pantalla-partida .chat-enviar {
+  background: linear-gradient(160deg, #d47a45, #9a4a26);
+  color: #fff3dc;
+}
+
+.pantalla-partida .chat-participante {
+  border-color: rgba(245, 185, 66, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffe9c9;
+}
+
+.pantalla-partida .chat-sistema {
+  border-color: rgba(245, 185, 66, 0.28);
+  background: rgba(245, 185, 66, 0.08);
+  color: #ffd98a;
+}
+
+/* ===== Mesa algo más ancha en pantallas horizontales ===== */
+
+@media (min-width: 901px) and (min-aspect-ratio: 1 / 1) {
+  .pantalla-partida .tapete {
+    width: min(100%, calc((100dvh - var(--cabecera-alto) - var(--mano-reservada) - var(--indicador-reserva) - 8px) * 1.22), 900px);
+    aspect-ratio: 1.22 / 1;
+  }
+}
+
+/* En tablet horizontal el chat abierto reserva su columna para no tapar
+   al asiento derecho ni las pilas centrales. */
+@media (min-width: 901px) and (max-width: 1200px) and (min-aspect-ratio: 1 / 1) {
+  .pantalla-partida .mesa-escenario {
+    transition: padding-right 0.24s ease;
+  }
+
+  body:has(#chat-panel:not(.hidden)) .pantalla-partida .mesa-escenario {
+    padding-right: min(364px, 36vw);
+  }
+}
+
+/* ===== Tabletas y móviles ===== */
+
+@media (max-width: 900px) {
+  .pantalla-partida {
+    --carta-ancho: clamp(42px, 10.5vw, 72px);
+    --carta-alto: calc(var(--carta-ancho) * 1.42);
+    --carta-solape: clamp(20px, 4.6vw, 30px);
+    --mano-reservada: 212px;
+  }
+
+  .pantalla-partida .tapete {
+    width: min(100%, calc(100dvh - var(--cabecera-alto) - var(--mano-reservada) - var(--indicador-reserva) - 18px), 760px);
+  }
+
+  .pantalla-partida .zona-mano {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "herr herr"
+      "izq der"
+      "mano mano";
+    gap: 3px 8px;
+    padding: 3px 8px calc(5px + var(--safe-bottom));
+  }
+
+  .pantalla-partida .mano-barra {
+    display: none;
+  }
+
+  .pantalla-partida .lado-derecho {
+    display: contents;
+  }
+
+  .pantalla-partida #herramientas-mano {
+    grid-area: herr;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 1px 0;
+  }
+
+  .pantalla-partida #herramientas-mano::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pantalla-partida #acciones-derecha {
+    grid-area: auto;
+    justify-self: end;
+  }
+
+  .pantalla-partida .fila-derecha {
+    grid-area: der;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+  }
+
+  .pantalla-partida .boton-salir-mano {
+    grid-area: auto;
+    align-self: center;
+    margin-left: 4px;
+  }
+
+  .pantalla-partida .mano {
+    min-height: calc(var(--carta-alto) + 16px);
+    padding: 12px 6px 2px;
+  }
+
+  .pantalla-partida #acciones-izquierda {
+    grid-area: izq;
+  }
+
+  .pantalla-partida .boton-juego {
+    min-height: 30px;
+    padding: 4px 9px;
+    font-size: 10.5px;
+  }
+
+  .pantalla-partida .btn-mini {
+    min-height: 22px;
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  .pantalla-partida .estado-juego {
+    display: none;
+  }
+
+  .pantalla-partida .ficha .avatar {
+    width: clamp(32px, 6.4vw, 46px);
+    height: clamp(32px, 6.4vw, 46px);
+  }
+
+  .pantalla-partida .ficha .nombre {
+    font-size: clamp(9px, 2.1vw, 13px);
+  }
+
+  .pantalla-partida .ficha .detalle {
+    font-size: clamp(8px, 1.7vw, 10px);
+  }
+
+  .pantalla-partida .chat-widget {
+    top: 6px;
+    right: 10px;
+  }
+
+  .pantalla-partida .chat-panel {
+    max-height: min(52dvh, calc(100dvh - var(--cabecera-alto) - 170px));
+  }
+
+  .pantalla-partida .chat-panel:not(.chat-teclado) {
+    top: 54px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pantalla-partida {
+    --carta-ancho: clamp(42px, 12vw, 54px);
+    --carta-solape: clamp(20px, 5vw, 24px);
+    --carta-centro-ancho: clamp(54px, 15vw, 66px);
+    --mano-reservada: 174px;
+  }
+
+  .pantalla-partida .tapete {
+    width: min(100%, calc(100dvh - var(--cabecera-alto) - var(--mano-reservada) - var(--indicador-reserva) - 14px), 760px);
+    border-width: 7px;
+  }
+
+  .pantalla-partida .ficha {
+    gap: 2px;
+  }
+
+  .pantalla-partida .ficha[data-pos="left"],
+  .pantalla-partida .ficha[data-pos="right"] {
+    max-width: 24%;
+  }
+
+  .pantalla-partida .ficha[data-pos="left"] { left: 1%; }
+  .pantalla-partida .ficha[data-pos="right"] { right: 1%; }
+
+  .pantalla-partida .ficha .info {
+    padding: 2px 6px 3px;
+    border-radius: 9px;
+  }
+
+  .pantalla-partida .ficha[data-pos="bottom"] {
+    gap: 6px;
+  }
+
+  .pantalla-partida .ficha[data-pos="bottom"] .avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .pantalla-partida .ficha .mini-cartas span {
+    width: 14px;
+    height: 20px;
+    margin-left: -7px;
+    border-width: 1.5px;
+  }
+
+  .pantalla-partida #zona-indicador {
+    max-width: 90%;
+  }
+
+  .pantalla-partida .globo {
+    padding: 4px 10px;
+    font-size: 9px;
+  }
+
+  .pantalla-partida .centro {
+    gap: clamp(12px, 4vw, 20px);
+  }
+
+  .pantalla-partida .lbl-pila {
+    padding: 1px 7px;
+    font-size: 8px;
+  }
+
+  .pantalla-partida .mano {
+    padding-top: 10px;
+  }
+
+  .pantalla-partida .boton-juego {
+    min-height: 28px;
+    padding: 3px 7px;
+    border-radius: 8px;
+    font-size: 9.5px;
+  }
+
+  .pantalla-partida .btn-mini {
+    min-height: 21px;
+    font-size: 8.5px;
+  }
+
+  .pantalla-partida .chat-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 17px;
+  }
+
+  .pantalla-partida .chat-panel {
+    width: calc(100vw - 16px);
+    max-height: min(50dvh, calc(100dvh - var(--cabecera-alto) - 160px));
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .pantalla-partida {
+    --carta-ancho: clamp(36px, 5.4vw, 56px);
+    --carta-alto: calc(var(--carta-ancho) * 1.4);
+    --carta-solape: clamp(16px, 2.4vw, 24px);
+    --carta-centro-ancho: clamp(40px, 5.6vw, 58px);
+    --carta-centro-alto: calc(var(--carta-centro-ancho) * 1.34);
+    --mano-reservada: 104px;
+    --indicador-reserva: 0px;
+  }
+
+  .pantalla-partida .tapete {
+    width: min(100%, calc((100dvh - var(--cabecera-alto) - var(--mano-reservada) - var(--indicador-reserva) - 12px) * 1.62), 640px);
+    aspect-ratio: 1.62 / 1;
+  }
+
+  .pantalla-partida .ficha[data-pos="top"] {
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .pantalla-partida .ficha[data-pos="top"] .mini-cartas {
+    display: none;
+  }
+
+  .pantalla-partida .ficha[data-pos="left"],
+  .pantalla-partida .ficha[data-pos="right"] {
+    max-width: 24%;
+  }
+
+  .pantalla-partida .centro {
+    top: 50%;
+    gap: 4px;
+  }
+
+  .pantalla-partida .lbl-pila {
+    padding: 1px 4px;
+    font-size: 7px;
+  }
+
+  .pantalla-partida .zona-mano {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+    grid-template-areas:
+      "herr herr herr"
+      "izq mano der";
+    gap: 2px 6px;
+    padding: 2px 8px calc(3px + var(--safe-bottom));
+  }
+
+  .pantalla-partida .mano-barra {
+    display: none;
+  }
+
+  .pantalla-partida .lado-derecho {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pantalla-partida .fila-derecha {
+    display: flex;
+  }
+
+  .pantalla-partida .herramientas-mano {
+    display: none;
+  }
+
+  .pantalla-partida .boton-salir-mano {
+    grid-area: auto;
+  }
+
+  .pantalla-partida .mano {
+    min-height: calc(var(--carta-alto) + 10px);
+    padding: 8px 6px 1px;
+  }
+
+  .pantalla-partida .boton-juego {
+    min-height: 25px;
+    padding: 2px 7px;
+    font-size: 9px;
+  }
+
+  .pantalla-partida .ficha .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+
+  .pantalla-partida .ficha .nombre {
+    font-size: clamp(9px, 1.5vw, 12px);
+  }
+
+  .pantalla-partida .ficha .detalle {
+    font-size: 8px;
+  }
+
+  .pantalla-partida #zona-indicador {
+    display: none;
+  }
+
+  .pantalla-partida .globo {
+    padding: 3px 9px;
+    font-size: 8.5px;
+  }
+
+  .pantalla-partida .chat-widget {
+    top: 4px;
+    right: 8px;
+  }
+
+  .pantalla-partida .chat-panel {
+    max-height: calc(100dvh - var(--cabecera-alto) - 20px);
+  }
+
+  .pantalla-partida .chat-panel:not(.chat-teclado) {
+    top: 4px;
+    right: 60px;
+    left: auto;
+    width: min(300px, 46vw);
+    height: auto;
+    max-height: calc(100dvh - var(--cabecera-alto) - 84px);
+  }
+
+  .pantalla-partida .chat-participantes,
+  .pantalla-partida .chat-pie {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pantalla-partida .tapete::before,
+  .pantalla-partida .boton-ganador {
+    animation: none;
+  }
+
+  .pantalla-partida #pila-descarte > .carta {
+    animation: none;
+  }
+}

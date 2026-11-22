@@ -22,6 +22,7 @@ function crearElementoCarta(carta, opciones = {}) {
       `<div class="esquina ${clasePalo}"><span class="esp-valor">${carta.nombre}</span><span class="esp-palo">${carta.simbolo}</span></div>`,
       `<div class="esquina inferior ${clasePalo}"><span class="esp-valor">${carta.nombre}</span><span class="esp-palo">${carta.simbolo}</span></div>`,
       `<div class="palo-centro ${clasePalo}">${carta.simbolo}</div>`,
+      `<div class="valor-centro">${carta.nombre}</div>`,
       '</div>',
       '<div class="muesca"></div>',
     ].join('');
@@ -46,7 +47,8 @@ export class BoardView {
     this.elManoContador = document.getElementById('mano-contador');
     this.elMiNombre = document.getElementById('mi-nombre-mano');
     this.elHerramientas = document.getElementById('herramientas-mano');
-    this.elAcciones = document.getElementById('barra-acciones');
+    this.elAccionesIzq = document.getElementById('acciones-izquierda');
+    this.elAccionesDer = document.getElementById('acciones-derecha');
     this.chipSala = document.getElementById('chip-sala');
 
     this.acciones = null;
@@ -485,6 +487,8 @@ export class BoardView {
       const indice = ordenados.indexOf(jug);
       const desplazamiento = (indice - miIndice + ordenados.length) % ordenados.length;
       ficha.dataset.pos = lugares[Math.min(desplazamiento, lugares.length - 1)];
+      ficha.style.setProperty('--jug-color', jug.color || '#fbbf24');
+      ficha.title = jug.nombre || 'Jugador';
       if (jug.numero === e.soyJugador) ficha.classList.add('es-yo');
       if (jug.esTurno) ficha.classList.add('es-turno');
       if (jug.esGanador) ficha.classList.add('ganador');
@@ -504,26 +508,26 @@ export class BoardView {
 
       const info = document.createElement('div');
       info.className = 'info';
+      const esYo = jug.numero === e.soyJugador;
+      const n = esYo ? (this._manoActual(e) || []).length : (jug.cartas || 0);
       const nombre = document.createElement('div');
       nombre.className = 'nombre';
-      nombre.textContent = (jug.esGanador ? '👑 ' : '') + (jug.nombre || 'Jugador');
+      const corona = jug.esGanador ? '👑 ' : '';
+      nombre.textContent = corona + (esYo ? 'TÚ' : (jug.nombre || 'Jugador'));
       const detalle = document.createElement('div');
       detalle.className = 'detalle' + (jug.esTurno ? ' turno' : '');
       detalle.textContent = jug.conectado === false
         ? 'Desconectado…'
         : jug.esGanador
           ? 'Ganó 4-4-3'
-          : jug.esTurno
-            ? '⏳ Su turno…'
-            : jug.numero === e.soyJugador
-              ? (this._manoActual(e) || []).length + ' cartas'
-              : (jug.cartas || 0) + ' cartas';
+          : esYo
+            ? `${jug.nombre || 'Tú'} · ${n}`
+            : `${n} cartas`;
       info.appendChild(nombre);
       info.appendChild(detalle);
 
       const mini = document.createElement('div');
       mini.className = 'mini-cartas';
-      const n = jug.numero === e.soyJugador ? (this._manoActual(e) || []).length : (jug.cartas || 0);
       for (let i = 0; i < Math.min(n, 4); i++) {
         mini.appendChild(document.createElement('span'));
       }
@@ -693,14 +697,14 @@ export class BoardView {
     }
     const hayHistorial = this._historialOrden.length > 0;
     const defs = [
-      { texto: '🔢 Valor', accion: () => this._ordenManualTipo('valor') },
-      { texto: '♠️ Palo', accion: () => this._ordenManualTipo('palo') },
-      { texto: '♠️🔢 Ambos', accion: () => this._ordenManualTipo('ambos') },
-      { texto: '↩️ Deshacer', accion: () => this._deshacerOrden(), deshabilitado: !hayHistorial },
+      { texto: '🔢 Valor', titulo: 'Ordenar por valor', accion: () => this._ordenManualTipo('valor') },
+      { texto: '♠ Palo', titulo: 'Ordenar por palo', accion: () => this._ordenManualTipo('palo') },
+      { texto: '♠🔢 Ambos', titulo: 'Ordenar por palo y valor', accion: () => this._ordenManualTipo('ambos') },
+      { texto: '↩ Deshacer', titulo: 'Deshacer el último orden', accion: () => this._deshacerOrden(), deshabilitado: !hayHistorial },
     ];
     this.elHerramientas.innerHTML = '';
     for (const def of defs) {
-      const btn = this._boton(def.texto, def.accion, 'btn-secundario', def.deshabilitado || false);
+      const btn = this._boton(def.texto, def.accion, 'btn-secundario', def.deshabilitado || false, def.titulo);
       btn.classList.add('btn-mini');
       this.elHerramientas.appendChild(btn);
     }
@@ -708,39 +712,46 @@ export class BoardView {
 
   _renderAcciones() {
     const e = this.e;
-    this.elAcciones.innerHTML = '';
+    if (!this.elAccionesIzq || !this.elAccionesDer) return;
+    this.elAccionesIzq.innerHTML = '';
+    this.elAccionesDer.innerHTML = '';
+
     if (e.ganador != null) {
       const reiniciar = this._boton('🔄 Nueva partida', () => this.acciones.reiniciar(), 'boton-accion', !this.acciones.reiniciar);
-      this.elAcciones.appendChild(reiniciar);
+      this.elAccionesDer.appendChild(reiniciar);
       return;
     }
-
-    const botones = [];
 
     if (e.turno !== e.soyJugador) {
       const espera = document.createElement('span');
       espera.className = 'turno-espera';
-      espera.textContent = '⏳ Esperando el turno de otro jugador…';
-      botones.push(espera);
-    } else if (e.fase === 'robar') {
-      botones.push(this._boton('🂡 Robar del mazo', () => this.acciones.robarMazo(), 'boton-accion'));
-      botones.push(this._boton('🃏 Robar del descarte', () => this.acciones.robarDescarte(), 'boton-estilo'));
-    } else if (e.fase === 'decidir') {
+      espera.textContent = '⏳ Esperando turno…';
+      this.elAccionesDer.appendChild(espera);
+      return;
+    }
+
+    if (e.fase === 'robar') {
+      this.elAccionesIzq.appendChild(this._boton('🂡 Mazo', () => this.acciones.robarMazo(), 'boton-accion', false, 'Robar del mazo'));
+      this.elAccionesIzq.appendChild(this._boton('🃏 Descarte', () => this.acciones.robarDescarte(), 'boton-estilo', false, 'Robar del descarte'));
+      return;
+    }
+
+    if (e.fase === 'decidir') {
       const puedeCantar = CardGameModel.validar443(this._manoActual(e));
       const seleccionEnMano = this.seleccion != null && this._manoActual(e).some((c) => c.id === this.seleccion);
 
-      botones.push(this._boton('👑 Cantar 4-4-3', () => this.acciones.cantar(), 'boton-ganador', !puedeCantar));
-      botones.push(this._boton('🗑 Botar carta seleccionada', () => this.acciones.botar(this.seleccion), 'boton-peligro', !seleccionEnMano));
+      this.elAccionesIzq.appendChild(this._boton('🗑 Botar', () => this.acciones.botar(this.seleccion), 'boton-peligro', !seleccionEnMano, 'Botar la carta seleccionada'));
+      this.elAccionesDer.appendChild(this._boton('👑 4-4-3', () => this.acciones.cantar(), 'boton-ganador', !puedeCantar, 'Cantar 4-4-3'));
     }
-
-    botones.forEach((b) => this.elAcciones.appendChild(b));
   }
 
-  _boton(texto, alClic, estiloClase, deshabilitado = false) {
+  _boton(texto, alClic, estiloClase, deshabilitado = false, titulo = '') {
     const btn = document.createElement('button');
     btn.className = `boton-juego ${estiloClase}`;
     btn.textContent = texto;
     btn.disabled = deshabilitado;
+    btn.title = titulo || texto;
+    btn.setAttribute('aria-label', titulo || texto);
     btn.onclick = alClic;
     return btn;
   }

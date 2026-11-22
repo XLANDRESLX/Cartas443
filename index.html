@@ -204,8 +204,19 @@
     <section id="pantalla-partida" class="pantalla pantalla-partida hidden" aria-label="Mesa de juego">
       <main id="mesa">
         <div class="mesa-escenario">
+          <div id="zona-indicador" class="indicador">
+            <div id="globo-turno" class="globo" role="status" aria-live="polite">—</div>
+            <div id="estado-juego" class="estado-juego"></div>
+          </div>
+
           <div id="tapete" class="tapete">
-            <button id="btn-salir-partida" class="btn-salir-mesa" type="button" title="Volver al inicio">← Salir</button>
+            <div class="mesa-arco" aria-hidden="true">
+              <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+            </div>
+            <div class="mesa-flechas" aria-hidden="true">
+              <span>➤</span><span>➤</span><span>➤</span><span>➤</span>
+            </div>
+
             <div id="asientos" class="asientos"></div>
 
             <div id="centro" class="centro">
@@ -214,11 +225,6 @@
                   <div class="pila-mazo"></div>
                 </div>
                 <span id="lbl-mazo" class="lbl-pila">Mazo</span>
-              </div>
-
-              <div id="zona-indicador" class="indicador">
-                <div id="globo-turno" class="globo" role="status" aria-live="polite">—</div>
-                <div id="estado-juego" class="estado-juego"></div>
               </div>
 
               <div id="zona-descarte" class="pila-zona">
@@ -234,10 +240,16 @@
         <div id="zona-mano" class="zona-mano">
           <div class="mano-barra">
             <span class="mano-titulo">Tu mano <span id="mano-contador"></span> · <span id="mi-nombre-mano"></span></span>
+          </div>
+          <div id="acciones-izquierda" class="acciones-lado"></div>
+          <div id="mano" class="mano" aria-label="Tu mano de cartas"></div>
+          <div class="lado-derecho">
+            <div class="fila-derecha">
+              <div id="acciones-derecha" class="acciones-lado"></div>
+              <button id="btn-salir-partida" class="boton-juego boton-salir-mano" type="button" title="Volver al inicio">🚪 Salir</button>
+            </div>
             <div id="herramientas-mano" class="herramientas-mano"></div>
           </div>
-          <div id="mano" class="mano" aria-label="Tu mano de cartas"></div>
-          <div id="barra-acciones" class="barra-acciones"></div>
         </div>
       </main>
 

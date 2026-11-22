@@ -1,7 +1,7 @@
 /* Service worker ligero: mantiene disponible la interfaz sin conexión.
    La señalización WebRTC y PeerJS siguen necesitando red; no se interceptan. */
 
-const VERSION = '443-shell-v2';
+const VERSION = '443-shell-v3';
 const ARCHIVOS = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const ARCHIVOS = [
   './css/lobby.css',
   './css/game.css',
   './css/responsive.css',
+  './css/game-table.css',
   './js/main.js',
   './js/router.js',
   './js/controllers/GameController.js',
