@@ -1,0 +1,23 @@
+{
+  "name": "4-4-3 Colombiano · Juego de Cartas",
+  "short_name": "4-4-3",
+  "description": "El clásico juego colombiano de cartas 4-4-3, multijugador P2P con WebRTC.",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#07120e",
+  "theme_color": "#07120e",
+  "lang": "es-CO",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "assets/img/icono-443.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

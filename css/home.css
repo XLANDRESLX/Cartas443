@@ -1,0 +1,202 @@
+/* =====================================================================
+   Pantalla principal cinematográfica
+   Bosque de atardecer + menú lateral con pincelada dorada.
+   ===================================================================== */
+
+.pantalla-inicio {
+  background: #120e07;
+}
+
+.fondo-cinematografico {
+  position: absolute;
+  inset: -2px;
+  background-image: url("../assets/backgrounds/bosque-atardecer.svg");
+  background-size: cover;
+  background-position: center 46%;
+  transform: scale(1.03);
+  animation: respiroFondo 24s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+@keyframes respiroFondo {
+  from { transform: scale(1.03) translate3d(0, 0, 0); }
+  to { transform: scale(1.08) translate3d(-1.2%, -0.6%, 0); }
+}
+
+.velo-cinematografico {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(5, 10, 6, 0.92) 0%, rgba(7, 13, 7, 0.62) 34%, rgba(9, 13, 6, 0.12) 62%, rgba(5, 9, 5, 0.4) 100%),
+    linear-gradient(180deg, rgba(4, 8, 5, 0.58) 0%, transparent 26%, transparent 66%, rgba(3, 7, 4, 0.86) 100%),
+    radial-gradient(130% 90% at 50% 45%, transparent 44%, rgba(2, 5, 3, 0.72) 100%);
+}
+
+.grano-cinematografico {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.13;
+  mix-blend-mode: overlay;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 4px);
+}
+
+.menu-cinematico {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  min-height: 0;
+  width: min(560px, 82vw);
+  padding: clamp(20px, 5vh, 58px) 0 clamp(20px, 5vh, 52px) clamp(20px, 5.5vw, 78px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(8px, 1.8vh, 18px);
+}
+
+.menu-eyebrow {
+  color: var(--oro-400);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px #000;
+}
+
+.menu-titulo {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: clamp(58px, 12vw, 122px);
+  line-height: 0.88;
+  letter-spacing: -4px;
+  color: var(--oro-200);
+  text-transform: uppercase;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), 0 0 44px rgba(232, 145, 58, 0.35);
+}
+
+.menu-subtitulo {
+  margin: 0 0 clamp(10px, 2.5vh, 26px);
+  color: rgba(246, 241, 228, 0.78);
+  font-family: var(--fuente-titulo);
+  font-size: clamp(13px, 2vw, 18px);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.menu-opciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(1px, 0.6vh, 6px);
+}
+
+.menu-opcion {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  background: transparent;
+  padding: clamp(5px, 1vh, 11px) 18px clamp(5px, 1vh, 11px) 14px;
+  color: rgba(248, 237, 210, 0.86);
+  font-family: var(--fuente-titulo);
+  font-size: clamp(24px, 4.4vw, 44px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 2px;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.85);
+  transition: color 0.2s ease, transform 0.2s ease, letter-spacing 0.2s ease;
+}
+
+.menu-opcion::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 2px;
+  right: 8px;
+  top: 50%;
+  height: 0.82em;
+  transform: translateY(-50%) rotate(-1.5deg) scaleX(0.6);
+  opacity: 0;
+  background: linear-gradient(96deg, rgba(255, 236, 176, 0.96), rgba(240, 205, 121, 0.9) 62%, rgba(224, 182, 79, 0.55));
+  clip-path: polygon(2% 18%, 18% 4%, 44% 12%, 72% 2%, 98% 16%, 94% 52%, 99% 84%, 74% 96%, 46% 88%, 20% 98%, 1% 80%, 4% 50%);
+  transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.3, 1.1);
+}
+
+.menu-opcion:hover,
+.menu-opcion:focus-visible,
+.menu-opcion.activo {
+  color: #fff8e6;
+  transform: translateX(8px);
+  letter-spacing: 3px;
+}
+
+.menu-opcion:hover::before,
+.menu-opcion:focus-visible::before,
+.menu-opcion.activo::before {
+  opacity: 1;
+  transform: translateY(-50%) rotate(-1.5deg) scaleX(1);
+}
+
+.menu-opcion.activo { color: #2b1d09; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4); }
+.menu-opcion.activo::before { opacity: 0.96; }
+
+.menu-pie {
+  margin: clamp(10px, 3vh, 28px) 0 0;
+  color: rgba(246, 241, 228, 0.42);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.inicio-marca {
+  position: absolute;
+  z-index: 3;
+  right: clamp(14px, 3vw, 34px);
+  bottom: calc(14px + var(--safe-bottom));
+  text-align: right;
+  color: rgba(246, 241, 228, 0.46);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.inicio-marca strong {
+  display: block;
+  color: var(--oro-400);
+  font-family: var(--fuente-titulo);
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+@media (max-width: 720px) {
+  .menu-cinematico {
+    width: 100%;
+    justify-content: center;
+    padding-left: clamp(18px, 6vw, 32px);
+    padding-right: 18px;
+  }
+  .menu-titulo { font-size: clamp(60px, 20vw, 92px); }
+  .menu-opcion { font-size: clamp(25px, 8vw, 36px); padding-left: 10px; }
+  .velo-cinematografico {
+    background:
+      linear-gradient(90deg, rgba(5, 10, 6, 0.88), rgba(7, 13, 7, 0.42) 74%, rgba(5, 9, 5, 0.55)),
+      linear-gradient(180deg, rgba(4, 8, 5, 0.55), transparent 30%, rgba(3, 7, 4, 0.82));
+  }
+  .inicio-marca { display: none; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .menu-cinematico { padding-top: 12px; padding-bottom: 12px; gap: 4px; }
+  .menu-titulo { font-size: clamp(44px, 9vw, 72px); }
+  .menu-subtitulo { margin-bottom: 6px; }
+  .menu-opcion { font-size: clamp(20px, 4vw, 30px); padding-top: 3px; padding-bottom: 3px; }
+  .menu-pie { display: none; }
+}

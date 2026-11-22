@@ -2,10 +2,16 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
   <title>4-4-3 · Juego de Cartas Colombiano</title>
-  <meta name="description" content="Juego de cartas colombiano 4-4-3 multijugador P2P con PeerJS.">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="description" content="El clásico juego colombiano de cartas 4-4-3, multijugador P2P con WebRTC.">
+  <meta name="theme-color" content="#07120e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="assets/img/icono-443.svg">
+  <link rel="apple-touch-icon" href="assets/img/icono-443.svg">
+
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
@@ -14,127 +20,228 @@
 <body>
   <div id="app">
 
-    <!-- ===== CABECERA ===== -->
+    <!-- ===== CABECERA GLOBAL ===== -->
     <header id="cabecera">
       <div class="marca">
         <div class="logo">4<span class="logo-sub">443</span></div>
         <div class="marca-texto">
           <h1>4-4-3 Colombiano</h1>
-          <p>Juego de cartas · P2P WebRTC</p>
+          <p>Cartas · P2P WebRTC</p>
         </div>
       </div>
       <div class="cabecera-acciones">
         <span id="chip-sala" class="chip hidden"></span>
         <span id="chip-conexion" class="chip chip-conexion" title="Estado de conexión">
-          <span class="punto"></span><span class="txt">Conectando…</span>
+          <span class="punto"></span><span class="txt">Sin conexión</span>
         </span>
-        <button id="btn-sonido" class="btn-icono" title="Activar o silenciar sonido">🔊</button>
+        <button id="btn-sonido" class="btn-icono" type="button" title="Activar o silenciar sonido" aria-label="Activar o silenciar sonido">🔊</button>
+        <button id="perfil-acceso" class="perfil-mini" type="button" data-ruta="perfil" title="Abrir perfil">
+          <span id="perfil-avatar-chip" class="avatar-mini">♠</span>
+          <span class="datos-mini">
+            <span id="perfil-nombre-chip" class="nombre-mini">Jugador</span>
+            <span class="rol-mini">Perfil</span>
+          </span>
+        </button>
       </div>
     </header>
 
-    <!-- ===== PANTALLA DE INICIO ===== -->
-    <section id="pantalla-inicio" class="pantalla">
-      <div class="tarjeta-inicio panel">
-        <div class="logo logo-grande">4<span class="logo-sub">443</span></div>
-        <h2 class="titulo-dorado">4-4-3 Colombiano</h2>
-        <p class="subtitulo">El clásico juego colombiano de cartas. Roba, arma tus combinaciones y canta victoria.</p>
+    <!-- ===== INICIO CINEMATOGRÁFICO ===== -->
+    <section id="pantalla-inicio" class="pantalla pantalla-inicio activa" aria-label="Menú principal">
+      <div class="fondo-cinematografico" aria-hidden="true"></div>
+      <div class="velo-cinematografico" aria-hidden="true"></div>
+      <div class="grano-cinematografico" aria-hidden="true"></div>
 
-        <label class="etiqueta" for="input-nombre">Tu nombre</label>
-        <input id="input-nombre" class="entrada" type="text" maxlength="16" placeholder="Jugador" autocomplete="off">
+      <nav class="menu-cinematico" aria-label="Menú principal">
+        <span class="menu-eyebrow">El clásico juego colombiano</span>
+        <h2 class="menu-titulo">4-4-3</h2>
+        <p class="menu-subtitulo">Colombiano · Edición digital</p>
 
-        <div class="grid-acciones">
-          <button id="btn-jugar" class="btn btn-verde btn-grande">🎮 Jugar</button>
-          <button id="btn-lobby" class="btn btn-secundario btn-grande">🏛 Salas</button>
+        <div class="menu-opciones">
+          <button id="btn-jugar" class="menu-opcion activo" type="button" data-accion="crear">Jugar</button>
+          <button id="btn-lobby" class="menu-opcion" type="button" data-ruta="salas">Salas</button>
+          <button id="btn-crear-privada" class="menu-opcion" type="button" data-ruta="crear-sala">Crear partida</button>
+          <button id="btn-unirse" class="menu-opcion" type="button" data-ruta="unirse">Unirse a partida</button>
+          <button id="btn-perfil" class="menu-opcion" type="button" data-ruta="perfil">Perfil</button>
+          <button id="btn-reglas" class="menu-opcion" type="button" data-ruta="reglas">Reglas</button>
+          <button id="btn-ajustes" class="menu-opcion" type="button" data-ruta="ajustes">Ajustes</button>
         </div>
-        <button id="btn-crear-privada" class="btn btn-secundario btn-ancho">🔒 Crear sala privada</button>
 
-        <div class="separador"><span>o únete con un código</span></div>
-        <div class="fila-codigo">
-          <input id="input-codigo" class="entrada" type="text" maxlength="9" placeholder="443-XXXX" autocomplete="off">
-          <button id="btn-unirse" class="btn btn-verde">Unirse</button>
-        </div>
+        <p class="menu-pie">Roba · Ordena · Canta 4-4-3</p>
+      </nav>
 
-        <div class="enlaces-inicio">
-          <button id="btn-reglas" class="enlace">📖 ¿Cómo se juega?</button>
-          <button id="btn-ajustes" class="enlace">⚙️ Ajustes</button>
-        </div>
-        <p class="creditos">Unicaribe · Ciénaga, Magdalena · Electiva de Profundización</p>
+      <div class="inicio-marca">
+        <strong>Unicaribe · Ciénaga</strong>
+        Electiva de Profundización
       </div>
     </section>
 
-    <!-- ===== PANTALLA LOBBY ===== -->
-    <section id="pantalla-lobby" class="pantalla hidden">
-      <div class="lobby panel">
-        <div class="lobby-cabecera">
-          <button id="btn-lobby-volver" class="btn btn-secundario btn-mini">← Volver</button>
-          <div class="lobby-titulo">
-            <h2 class="titulo-dorado">Salas</h2>
+    <!-- ===== SALAS / LOBBY ===== -->
+    <section id="pantalla-salas" class="pantalla pantalla-salas hidden" aria-label="Salas">
+      <div class="pagina">
+        <div class="pagina-cabecera">
+          <div>
+            <h2>Salas</h2>
             <p id="lobby-contador" class="subtitulo-mini">0 salas guardadas en este dispositivo</p>
           </div>
-          <div class="lobby-cabecera-acciones">
-            <button id="btn-lobby-refrescar" class="btn btn-secundario btn-mini">↻ Actualizar</button>
-            <button id="btn-lobby-crear" class="btn btn-verde btn-mini">+ Nueva sala</button>
+          <div class="acciones-pagina">
+            <button id="btn-lobby-volver" class="btn btn-secundario" type="button" data-ruta="inicio">← Inicio</button>
+            <button id="btn-lobby-refrescar" class="btn btn-secundario" type="button">↻ Actualizar</button>
+            <button id="btn-lobby-crear" class="btn btn-verde" type="button" data-ruta="crear-sala">+ Nueva sala</button>
           </div>
         </div>
 
-        <p class="nota-lobby">
-          Por limitación de P2P (PeerJS) no existe un directorio global de salas. Aquí se listan
-          <b>las salas de este dispositivo</b>. Para entrar a la sala de otra persona, usa su código.
-        </p>
+        <div class="contenido-pagina">
+          <p class="nota">
+            Por limitación de P2P (PeerJS) no existe un directorio global: aquí se listan las
+            <b>salas recientes de este dispositivo</b>. Para entrar a la sala de otra persona, usa su código.
+          </p>
 
-        <div id="lista-salas" class="lista-salas"></div>
-
-        <div class="lobby-publicas">
-          <div class="publicas-cabecera">
-            <div>
-              <h3 class="titulo-dorado">Salas públicas</h3>
-              <p id="publicas-contador" class="subtitulo-mini">15 salas fijas</p>
+          <div class="bloque seccion-salas">
+            <div class="cabecera-seccion">
+              <h3>Recientes</h3>
             </div>
-            <button id="btn-publicas-refrescar" class="btn btn-secundario btn-mini">↻ Ver ocupación</button>
+            <div id="lista-salas" class="lista-salas"></div>
           </div>
-          <div id="lista-publicas" class="lista-salas"></div>
+
+          <div class="bloque seccion-salas">
+            <div class="cabecera-seccion">
+              <div>
+                <h3>Salas públicas</h3>
+                <p id="publicas-contador" class="subtitulo-mini">15 salas fijas</p>
+              </div>
+              <button id="btn-publicas-refrescar" class="btn btn-secundario btn-mini" type="button">↻ Ver ocupación</button>
+            </div>
+            <div id="lista-publicas" class="lista-salas"></div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ===== MESA DE JUEGO ===== -->
-    <main id="mesa" class="hidden">
-      <div id="tapete" class="tapete">
-        <button id="btn-salir-partida" class="btn-salir-mesa" title="Volver al inicio">← Salir</button>
-        <div id="asientos" class="asientos"></div>
+    <!-- ===== CREAR SALA ===== -->
+    <section id="pantalla-crear-sala" class="pantalla hidden" aria-label="Crear partida">
+      <div class="pagina">
+        <div class="pagina-cabecera">
+          <div>
+            <h2>Crear partida</h2>
+            <p class="subtitulo-mini">Genera un código y compártelo con tus amigos.</p>
+          </div>
+          <button id="btn-crear-volver" class="btn btn-secundario" type="button" data-ruta="inicio">← Inicio</button>
+        </div>
 
-        <div id="centro" class="centro">
-          <div id="zona-mazo" class="pila-zona">
-            <div id="btn-mazo" class="pila-clic">
-              <div class="pila-mazo"></div>
+        <div class="contenido-pagina">
+          <form id="form-crear-sala" class="bloque formulario-sala">
+            <div>
+              <label class="etiqueta" for="nombre-sala">Nombre de la sala (opcional, solo en este dispositivo)</label>
+              <input id="nombre-sala" class="entrada" type="text" maxlength="24" placeholder="Mi partida 4-4-3" autocomplete="off">
             </div>
-            <span id="lbl-mazo" class="lbl-pila">Mazo</span>
+
+            <div class="vista-previa-codigo">
+              <span class="subtitulo-mini">Tu código será</span>
+              <span id="codigo-previa" class="codigo">443-XXXX</span>
+            </div>
+
+            <p class="nota">
+              Se creará una sala privada para 2 a 4 jugadores. El anfitrión valida todas las jugadas.
+            </p>
+
+            <button id="btn-crear-sala" class="btn btn-oro btn-grande btn-ancho" type="submit">🂡 Crear sala y abrir lobby</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== UNIRSE ===== -->
+    <section id="pantalla-unirse" class="pantalla hidden" aria-label="Unirse a partida">
+      <div class="pagina">
+        <div class="pagina-cabecera">
+          <div>
+            <h2>Unirse a partida</h2>
+            <p class="subtitulo-mini">Escribe el código que te compartió el anfitrión.</p>
+          </div>
+          <button id="btn-unirse-volver" class="btn btn-secundario" type="button" data-ruta="inicio">← Inicio</button>
+        </div>
+
+        <div class="contenido-pagina">
+          <form id="form-unirse" class="bloque formulario-sala">
+            <div>
+              <label class="etiqueta" for="input-codigo">Código de invitación</label>
+              <input id="input-codigo" class="entrada codigo" type="text" maxlength="20" placeholder="443-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            </div>
+            <p class="nota">El formato habitual es <b>443-XXXX</b>. También puedes usar códigos de salas públicas.</p>
+            <button id="btn-unirse-enviar" class="btn btn-verde btn-grande btn-ancho" type="submit">→ Buscar sala</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SALA DE ESPERA ===== -->
+    <section id="overlay-espera" class="pantalla pantalla-sala hidden" aria-label="Sala de espera">
+      <div class="pagina">
+        <div class="panel-espera">
+          <div class="espera-cabecera">
+            <h2>Sala de espera</h2>
+            <p>Comparte el código con tus amigos. Máximo 4 jugadores.</p>
           </div>
 
-          <div id="zona-indicador" class="indicador">
-            <div id="globo-turno" class="globo">—</div>
-            <div id="estado-juego" class="estado-juego"></div>
+          <div class="codigo-sala">
+            <span id="espera-codigo" class="codigo-valor">443-XXXX</span>
+            <button id="btn-copiar-codigo" class="btn btn-oro" type="button">📋 Copiar / invitar</button>
           </div>
 
-          <div id="zona-descarte" class="pila-zona">
-            <div id="btn-descarte" class="pila-clic">
-              <div id="pila-descarte" class="relative"></div>
-            </div>
-            <span id="lbl-descarte" class="lbl-pila">Descarte</span>
+          <ul id="espera-jugadores" class="espera-jugadores"></ul>
+
+          <p id="espera-nota" class="subtitulo-mini espera-nota">Esperando jugadores…</p>
+
+          <div class="espera-acciones">
+            <button id="btn-espera-iniciar" class="btn btn-verde btn-grande hidden" type="button">▶ Iniciar partida</button>
+            <button id="btn-espera-salir" class="btn btn-peligro" type="button">Abandonar sala</button>
           </div>
         </div>
       </div>
+    </section>
 
-      <div id="zona-mano" class="zona-mano">
-        <div class="mano-barra">
-          <span class="mano-titulo">Tu mano <span id="mano-contador"></span> · <span id="mi-nombre-mano"></span></span>
-          <div id="herramientas-mano" class="herramientas-mano"></div>
+    <!-- ===== PARTIDA ===== -->
+    <section id="pantalla-partida" class="pantalla pantalla-partida hidden" aria-label="Mesa de juego">
+      <main id="mesa">
+        <div class="mesa-escenario">
+          <div id="tapete" class="tapete">
+            <button id="btn-salir-partida" class="btn-salir-mesa" type="button" title="Volver al inicio">← Salir</button>
+            <div id="asientos" class="asientos"></div>
+
+            <div id="centro" class="centro">
+              <div id="zona-mazo" class="pila-zona">
+                <div id="btn-mazo" class="pila-clic" role="button" tabindex="0" aria-label="Robar del mazo">
+                  <div class="pila-mazo"></div>
+                </div>
+                <span id="lbl-mazo" class="lbl-pila">Mazo</span>
+              </div>
+
+              <div id="zona-indicador" class="indicador">
+                <div id="globo-turno" class="globo" role="status" aria-live="polite">—</div>
+                <div id="estado-juego" class="estado-juego"></div>
+              </div>
+
+              <div id="zona-descarte" class="pila-zona">
+                <div id="btn-descarte" class="pila-clic" role="button" tabindex="0" aria-label="Robar del descarte">
+                  <div id="pila-descarte" class="relative"></div>
+                </div>
+                <span id="lbl-descarte" class="lbl-pila">Descarte</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div id="mano" class="mano"></div>
-        <div id="barra-acciones" class="barra-acciones"></div>
-      </div>
 
-      <!-- ===== CHAT DE PARTIDA ===== -->
+        <div id="zona-mano" class="zona-mano">
+          <div class="mano-barra">
+            <span class="mano-titulo">Tu mano <span id="mano-contador"></span> · <span id="mi-nombre-mano"></span></span>
+            <div id="herramientas-mano" class="herramientas-mano"></div>
+          </div>
+          <div id="mano" class="mano" aria-label="Tu mano de cartas"></div>
+          <div id="barra-acciones" class="barra-acciones"></div>
+        </div>
+      </main>
+
+      <!-- CHAT DE PARTIDA -->
       <aside id="chat-widget" class="chat-widget hidden" aria-label="Chat de partida">
         <button id="btn-chat" class="chat-btn" type="button" title="Abrir chat" aria-expanded="false" aria-controls="chat-panel">
           <span class="chat-btn-icono" aria-hidden="true">💬</span>
@@ -161,44 +268,145 @@
 
           <form id="chat-form" class="chat-form" autocomplete="off">
             <div class="chat-entrada-fila">
-              <textarea id="chat-input" class="chat-input" rows="1" maxlength="500"
-                placeholder="Escribe un mensaje…" aria-label="Mensaje de chat"></textarea>
-              <button id="chat-enviar" class="chat-enviar" type="submit" title="Enviar mensaje"
-                aria-label="Enviar mensaje" disabled>➤</button>
+              <textarea id="chat-input" class="chat-input" rows="1" maxlength="500" placeholder="Escribe un mensaje…" aria-label="Mensaje de chat"></textarea>
+              <button id="chat-enviar" class="chat-enviar" type="submit" title="Enviar mensaje" aria-label="Enviar mensaje" disabled>➤</button>
             </div>
             <div class="chat-pie">
               <span id="chat-contador" class="chat-contador">0/500</span>
-              <span class="chat-ayuda">Enter envía · Shift+Enter salto de línea</span>
+              <span class="chat-ayuda">Enter envía · Shift+Enter salto</span>
             </div>
           </form>
         </section>
       </aside>
-    </main>
+    </section>
 
-  </div>
+    <!-- ===== PERFIL ===== -->
+    <section id="pantalla-perfil" class="pantalla hidden" aria-label="Perfil">
+      <div class="pagina">
+        <div class="pagina-cabecera">
+          <div>
+            <h2>Perfil</h2>
+            <p class="subtitulo-mini">Tu identidad se guarda en este dispositivo.</p>
+          </div>
+          <button id="btn-perfil-volver" class="btn btn-secundario" type="button" data-ruta="inicio">← Inicio</button>
+        </div>
 
-  <!-- ===== OVERLAY SALA DE ESPERA ===== -->
-  <div id="overlay-espera" class="overlay hidden">
-    <div class="panel espera">
-      <div class="espera-cabecera">
-        <h2 class="titulo-dorado">Sala de espera</h2>
-        <p class="subtitulo-mini">Comparte el código para que se unan (máx. 4 jugadores)</p>
+        <div class="contenido-pagina">
+          <div class="perfil-grid">
+            <form id="form-perfil" class="bloque formulario-sala">
+              <div>
+                <label class="etiqueta" for="input-nombre">Nombre del jugador</label>
+                <input id="input-nombre" class="entrada" type="text" maxlength="16" placeholder="Jugador" autocomplete="off">
+              </div>
+
+              <div>
+                <span class="etiqueta">Avatar</span>
+                <div id="opciones-avatar" class="opciones-avatar" role="group" aria-label="Selecciona un avatar"></div>
+              </div>
+
+              <button id="btn-guardar-perfil" class="btn btn-oro btn-grande btn-ancho" type="submit">Guardar perfil</button>
+              <p id="aviso-perfil" class="subtitulo-mini"></p>
+            </form>
+
+            <div class="bloque tarjeta-perfil">
+              <div id="perfil-avataractual" class="avatar-grande">♠</div>
+              <div id="perfil-nombreactual" class="nombre-perfil">Jugador</div>
+              <span class="etiqueta-perfil">Jugador local</span>
+              <p class="nota">El nombre se aplica al crear o unirse a una sala. Si ya estás jugando, se usará en la próxima partida.</p>
+            </div>
+          </div>
+        </div>
       </div>
+    </section>
 
-      <div class="codigo-sala">
-        <span id="espera-codigo" class="codigo-valor">443-XXXX</span>
-        <button id="btn-copiar-codigo" class="btn btn-secundario btn-mini">📋 Copiar</button>
+    <!-- ===== REGLAS ===== -->
+    <section id="pantalla-reglas" class="pantalla hidden" aria-label="Reglas del juego">
+      <div class="pagina">
+        <div class="pagina-cabecera">
+          <div>
+            <h2>Reglas</h2>
+            <p class="subtitulo-mini">Así se juega el 4-4-3 colombiano.</p>
+          </div>
+          <button id="btn-reglas-volver" class="btn btn-secundario" type="button" data-ruta="inicio">← Inicio</button>
+        </div>
+
+        <div class="contenido-pagina reglas-layout">
+          <article class="bloque reglas-texto">
+            <h4>1. Reparto</h4>
+            <p>Cada jugador recibe <strong>10 cartas</strong>. El mazo tiene <strong>104 cartas</strong> (2 copias de cada una de las 52). Se voltea una carta al descarte y el turno inicial se elige al azar.</p>
+
+            <h4>2. Tu turno</h4>
+            <p>Debes <strong>robar 1 carta</strong>, del mazo o del descarte, quedando con <strong>11 cartas</strong>.</p>
+
+            <h4>3. Cantar 4-4-3</h4>
+            <p>Ganas si tus 11 cartas forman tres grupos de <strong>4, 4 y 3 cartas del mismo número</strong>, en cualquier orden (4-4-3, 4-3-4 o 3-4-4). El <strong>palo</strong> (♠ ♥ ♦ ♣) no importa.</p>
+            <ul>
+              <li><strong>Grupo de 4:</strong> cuatro cartas del mismo número.</li>
+              <li><strong>Grupo de 3:</strong> tres cartas del mismo número.</li>
+            </ul>
+
+            <h4>4. Botar y seguir</h4>
+            <p>Si no formas el 4-4-3, <strong>bota 1 carta</strong> al descarte y cedes el turno. Puedes ordenar tu mano por valor, palo o ambos; el orden es privado y se mantiene con arrastre.</p>
+
+            <h4>5. Empate</h4>
+            <p>Si el mazo y el descarte se agotan sin que nadie cante, la partida termina en <strong>empate</strong> y se reparte de nuevo.</p>
+          </article>
+
+          <aside class="bloque reglas-resumen">
+            <div class="resumen-numero"><strong>10</strong><span>cartas iniciales por jugador</span></div>
+            <div class="resumen-numero"><strong>11</strong><span>cartas al cantar victoria</span></div>
+            <div class="resumen-numero"><strong>4-4-3</strong><span>grupos del mismo número</span></div>
+            <div class="resumen-numero"><strong>2-4</strong><span>jugadores por sala</span></div>
+            <p class="nota">El anfitrión valida todas las jugadas. Solicitudes de reinicio y victoria pasan por él.</p>
+          </aside>
+        </div>
       </div>
+    </section>
 
-      <ul id="espera-jugadores" class="espera-jugadores"></ul>
+    <!-- ===== AJUSTES ===== -->
+    <section id="pantalla-ajustes" class="pantalla hidden" aria-label="Ajustes">
+      <div class="pagina">
+        <div class="pagina-cabecera">
+          <div>
+            <h2>Ajustes</h2>
+            <p class="subtitulo-mini">Preferencias guardadas en este dispositivo.</p>
+          </div>
+          <button id="btn-ajustes-volver" class="btn btn-secundario" type="button" data-ruta="inicio">← Inicio</button>
+        </div>
 
-      <p id="espera-nota" class="subtitulo-mini">Esperando jugadores…</p>
+        <div class="contenido-pagina">
+          <div class="bloque">
+            <div class="interruptor">
+              <div>
+                <span class="texto-fuerte">🔊 Sonido</span>
+                <span class="texto-ayuda">Efectos de robar, botar, cambio de turno y victoria.</span>
+              </div>
+              <button id="btn-sonido-ajuste" class="btn btn-secundario" type="button">Activado</button>
+            </div>
 
-      <div class="espera-acciones">
-        <button id="btn-espera-iniciar" class="btn btn-verde hidden">▶ Iniciar partida</button>
-        <button id="btn-espera-salir" class="btn btn-secundario">Salir</button>
+            <div class="interruptor">
+              <div>
+                <span class="texto-fuerte">✨ Animaciones</span>
+                <span class="texto-ayuda">Reduce transiciones y efectos visuales si lo prefieres.</span>
+              </div>
+              <label class="btn btn-secundario" for="ajustes-movimiento">
+                <input id="ajustes-movimiento" type="checkbox"> Reducir movimiento
+              </label>
+            </div>
+
+            <div class="interruptor">
+              <div>
+                <span class="texto-fuerte">🌐 Conexión</span>
+                <span class="texto-ayuda">El juego usa PeerJS/WebRTC con la nube pública (0.peerjs.com).</span>
+              </div>
+              <span id="ajustes-conexion" class="chip">Sin conexión</span>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <button id="btn-volver-sala" class="btn-volver-sala hidden" type="button">← Volver a la sala</button>
   </div>
 
   <script type="module" src="js/main.js"></script>

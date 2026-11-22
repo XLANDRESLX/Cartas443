@@ -2,6 +2,7 @@ export class AudioView {
   constructor() {
     this.contexto = null;
     this.silenciado = false;
+    this.onCambio = null;
     this.boton = document.getElementById('btn-sonido');
     if (this.boton) {
       this.boton.addEventListener('click', () => this.alternar());
@@ -21,10 +22,17 @@ export class AudioView {
   }
 
   alternar() {
-    this.silenciado = !this.silenciado;
+    return this.setSilenciado(!this.silenciado);
+  }
+
+  setSilenciado(valor) {
+    this.silenciado = !!valor;
     if (this.boton) {
       this.boton.textContent = this.silenciado ? '🔇' : '🔊';
+      this.boton.setAttribute('aria-label', this.silenciado ? 'Activar sonido' : 'Silenciar sonido');
+      this.boton.title = this.silenciado ? 'Activar sonido' : 'Silenciar sonido';
     }
+    if (typeof this.onCambio === 'function') this.onCambio(this.silenciado);
     return this.silenciado;
   }
 

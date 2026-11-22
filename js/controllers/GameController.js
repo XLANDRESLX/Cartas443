@@ -2,6 +2,7 @@ import { CardGameModel, MIN_JUGADORES, MAX_JUGADORES } from '../models/CardGameM
 import { Card } from '../models/Card.js';
 import { PeerNetwork } from '../network/PeerNetwork.js';
 import { UIControlsView } from '../views/UIControlsView.js';
+import { AVATARES, obtenerAvatar } from '../utils/storage.js';
 import { BoardView } from '../views/BoardView.js';
 import { AudioView } from '../views/AudioView.js';
 import { ChatController, normalizarTextoChat } from './ChatController.js';
@@ -419,6 +420,11 @@ export class GameController {
         numero: j.numero,
         nombre: j.nombre,
         color: this._colorDe(j.numero),
+        // Sólo el avatar local viene del perfil; el de los demás se deriva
+        // del número para no alterar el protocolo P2P.
+        avatar: j.numero === this.miNumero
+          ? obtenerAvatar()
+          : AVATARES[(j.numero - 1) % AVATARES.length],
         esHost: j.numero === this.hostNumero,
       }));
     this.ui.actualizarEspera({

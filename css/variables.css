@@ -1,0 +1,72 @@
+/* =====================================================================
+   Variables de diseño · Cartas 4-4-3
+   Paleta compartida: verde profundo, dorado de atardecer y mesa de madera.
+   ===================================================================== */
+
+:root {
+  /* Negros y verdes */
+  --tinta-950: #040b09;
+  --tinta-900: #07120e;
+  --tinta-800: #0b1d16;
+  --tinta-700: #10291f;
+  --verde-900: #0a3b28;
+  --verde-800: #0f5135;
+  --verde-700: #166b46;
+  --verde-600: #1f8a58;
+  --verde-500: #2aa96c;
+
+  /* Dorados y acentos */
+  --oro-900: #7a5a17;
+  --oro-700: #b8892a;
+  --oro-500: #e0b64f;
+  --oro-400: #f0cd79;
+  --oro-200: #ffe8b4;
+  --ámbar: #e8913a;
+  --rojo: #d75a54;
+  --rojo-suave: #f0a6a2;
+  --azul: #5aa9d6;
+  --rosa: #e08fb2;
+  --lima: #a7d06a;
+
+  /* Texto */
+  --texto: #f6f1e4;
+  --texto-suave: rgba(246, 241, 228, 0.66);
+  --texto-tenue: rgba(246, 241, 228, 0.38);
+
+  /* Superficies */
+  --superficie: rgba(8, 26, 20, 0.9);
+  --superficie-2: rgba(13, 39, 29, 0.86);
+  --borde: rgba(224, 182, 79, 0.26);
+  --borde-fuerte: rgba(240, 205, 121, 0.62);
+  --sombra: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --brillo: 0 0 24px rgba(224, 182, 79, 0.28);
+
+  /* Tipografía */
+  --fuente-ui: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --fuente-titulo: Georgia, "Times New Roman", serif;
+  --fuente-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  /* Geometría */
+  --radio: 18px;
+  --radio-chico: 12px;
+  --radio-grande: 28px;
+  --carta-ancho: clamp(50px, 6vw, 74px);
+  --carta-alto: calc(var(--carta-ancho) * 1.42);
+  --carta-solape: clamp(14px, 2vw, 26px);
+  --cabecera-alto: 58px;
+  --mano-reservada: 184px;
+
+  /* Seguridad de dispositivo */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+@media (min-width: 1100px) {
+  :root {
+    --carta-ancho: 78px;
+    --carta-solape: 28px;
+    --mano-reservada: 200px;
+  }
+}

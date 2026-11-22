@@ -1,4 +1,5 @@
 import { CardGameModel } from '../models/CardGameModel.js';
+import { AVATARES } from '../utils/storage.js';
 
 const ORDEN_PALOS = { espadas: 0, corazones: 1, diamantes: 2, treboles: 3 };
 
@@ -6,6 +7,7 @@ function crearElementoCarta(carta, opciones = {}) {
   const div = document.createElement('div');
   div.className = 'carta';
   div.dataset.id = carta.id;
+  if (carta.palo) div.dataset.palo = carta.palo;
   if (opciones.deshabilitada) div.classList.add('deshabilitada');
 
   const cuerpo = document.createElement('div');
@@ -56,10 +58,18 @@ export class BoardView {
     this._elIndicador = null;
     this._claveOrden = '';
     this._prevGanador = null;
+    this.onMostrarPartida = null;
+    this._partidaVisible = false;
+    this._idsManoPrevios = new Set();
   }
 
   configurarAcciones(acciones) {
     this.acciones = acciones;
+  }
+
+  reiniciarVisibilidadPartida() {
+    this._partidaVisible = false;
+    this._idsManoPrevios = new Set();
   }
 
   render(e) {
@@ -86,6 +96,11 @@ export class BoardView {
     this._renderMano();
     this._renderHerramientas();
     this._renderAcciones();
+
+    if (!this._partidaVisible) {
+      this._partidaVisible = true;
+      if (typeof this.onMostrarPartida === 'function') this.onMostrarPartida();
+    }
   }
 
   nuevaMano(mano) {
@@ -97,7 +112,21 @@ export class BoardView {
     if (this.e) {
       this._renderMano();
       this._renderHerramientas();
+      this._autoScrollMano();
     }
+  }
+
+  _autoScrollMano(nodo = null) {
+    if (!this.elMano) return;
+    try {
+      if (nodo && typeof nodo.scrollIntoView === 'function') {
+        nodo.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      } else if (typeof this.elMano.scrollTo === 'function') {
+        this.elMano.scrollTo({ left: this.elMano.scrollWidth, behavior: 'smooth' });
+      } else {
+        this.elMano.scrollLeft = this.elMano.scrollWidth;
+      }
+    } catch (e) { /* scroll no disponible */ }
   }
 
   reiniciarMano(mano) {
@@ -124,6 +153,10 @@ export class BoardView {
     if (this.e) {
       this._renderMano();
       this._renderAcciones();
+      if (this.seleccion != null) {
+        const nodo = this.elMano.querySelector(`.carta[data-id="${this.seleccion}"]`);
+        if (nodo) this._autoScrollMano(nodo);
+      }
     }
   }
 
@@ -251,29 +284,40 @@ export class BoardView {
       this._resaltarObjetivo(evento.clientX, evento.clientY);
     };
 
-    const alFinal = (evento) => {
-      if (!this.arrastre || this.arrastre.pointerId !== evento.pointerId) return;
-      const fueActivo = this.arrastre.activo;
+    const limpiar = () => {
       const a = this.arrastre;
       this.arrastre = null;
       this._destruirFantasma();
       this._quitarIndicador();
+      nodo.classList.remove('arrastrada');
+      this._cartaArrastrada = null;
+      return a;
+    };
+
+    const alFinal = (evento) => {
+      if (!this.arrastre || this.arrastre.pointerId !== evento.pointerId) return;
+      const fueActivo = this.arrastre.activo;
+      const a = limpiar();
       if (fueActivo) {
         const destino = this._objetivoEn(evento.clientX, evento.clientY);
-        if (destino) {
-          this._soltarEn(a.origen, destino, evento.clientX, evento.clientY);
-        }
+        if (destino) this._soltarEn(a.origen, destino);
       } else {
-        nodo.classList.remove('arrastrada');
         this._emularClic(a.origen);
       }
-      this._cartaArrastrada = null;
+    };
+
+    // Un pointercancel (gesto del sistema, cambio de app, scroll) NO debe
+    // interpretarse como clic: sólo cancela el arrastre en curso.
+    const alCancelar = (evento) => {
+      if (!this.arrastre || this.arrastre.pointerId !== evento.pointerId) return;
+      limpiar();
     };
 
     nodo.addEventListener('pointerdown', alInicio);
     nodo.addEventListener('pointermove', alMover);
     nodo.addEventListener('pointerup', alFinal);
-    nodo.addEventListener('pointercancel', alFinal);
+    nodo.addEventListener('pointercancel', alCancelar);
+    nodo.addEventListener('lostpointercapture', alCancelar);
   }
 
   _crearFantasma(nodo) {
@@ -288,14 +332,16 @@ export class BoardView {
     this.fantasma.style.pointerEvents = 'none';
     this.fantasma.style.width = nodo.offsetWidth + 'px';
     this.fantasma.style.height = nodo.offsetHeight + 'px';
+    this._anchoFantasma = nodo.offsetWidth || 0;
+    this._altoFantasma = nodo.offsetHeight || 0;
     document.body.appendChild(this.fantasma);
   }
 
   _moverFantasma(x, y) {
-    if (this.fantasma) {
-      this.fantasma.style.left = (x - (this.fantasma.offsetWidth || 0) / 2) + 'px';
-      this.fantasma.style.top = (y - (this.fantasma.offsetHeight || 0) / 2) + 'px';
-    }
+    if (!this.fantasma) return;
+    const dx = x - (this._anchoFantasma || 0) / 2;
+    const dy = y - (this._altoFantasma || 0) / 2;
+    this.fantasma.style.transform = `translate3d(${dx}px, ${dy}px, 0) rotate(3deg) scale(1.07)`;
   }
 
   _resaltarObjetivo(x, y) {
@@ -427,9 +473,18 @@ export class BoardView {
 
     if (ordenados.length === 0) return;
 
+    // El jugador local siempre queda abajo; el resto se reparte en sentido
+    // horario: arriba, izquierda y derecha. Así la mesa se entiende igual
+    // con 2, 3 o 4 participantes y en vertical u horizontal.
+    const lugares = ['bottom', 'top', 'left', 'right'];
+    const miIndice = Math.max(0, ordenados.findIndex((j) => j.numero === e.soyJugador));
+
     for (const jug of ordenados) {
       const ficha = document.createElement('div');
       ficha.className = 'ficha';
+      const indice = ordenados.indexOf(jug);
+      const desplazamiento = (indice - miIndice + ordenados.length) % ordenados.length;
+      ficha.dataset.pos = lugares[Math.min(desplazamiento, lugares.length - 1)];
       if (jug.numero === e.soyJugador) ficha.classList.add('es-yo');
       if (jug.esTurno) ficha.classList.add('es-turno');
       if (jug.esGanador) ficha.classList.add('ganador');
@@ -438,7 +493,8 @@ export class BoardView {
       const avatar = document.createElement('div');
       avatar.className = 'avatar';
       avatar.style.background = jug.color || '#fbbf24';
-      avatar.textContent = String(jug.numero);
+      const numeroJug = Number(jug.numero) || 1;
+      avatar.textContent = jug.avatar || AVATARES[(numeroJug - 1) % AVATARES.length];
       if (jug.esHost) {
         const badge = document.createElement('span');
         badge.className = 'host-badge';
@@ -615,15 +671,18 @@ export class BoardView {
       this.elMano.classList.remove('vacio');
     }
 
+    const teniaCartas = this._idsManoPrevios.size > 0;
     idsVisibles.forEach((id) => {
       const carta = porId[id];
       if (!carta) return;
       const nodo = crearElementoCarta(carta);
       if (carta.id === this.seleccion) nodo.classList.add('seleccionada');
       if (e.ganador) nodo.classList.add('deshabilitada');
+      if (teniaCartas && !this._idsManoPrevios.has(id)) nodo.classList.add('carta-entrando');
       this._vincularArrastre(nodo, { tipo: 'mano', cartaId: carta.id });
       this.elMano.appendChild(nodo);
     });
+    this._idsManoPrevios = new Set(idsVisibles);
   }
 
   _renderHerramientas() {
@@ -660,7 +719,7 @@ export class BoardView {
 
     if (e.turno !== e.soyJugador) {
       const espera = document.createElement('span');
-      espera.className = 'text-sm text-emerald-100/80';
+      espera.className = 'turno-espera';
       espera.textContent = '⏳ Esperando el turno de otro jugador…';
       botones.push(espera);
     } else if (e.fase === 'robar') {

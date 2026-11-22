@@ -1,3 +1,5 @@
+import { AVATARES } from '../utils/storage.js';
+
 let SwalGlobalado = null;
 
 function obtenerSwal() {
@@ -9,6 +11,15 @@ function obtenerSwal() {
 
 const COLORES_JUGADOR = ['#fbbf24', '#38bdf8', '#f472b6', '#a3e635'];
 let indiceColor = 0;
+
+function escaparHtml(valor) {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export function siguienteColor() {
   const color = COLORES_JUGADOR[indiceColor % COLORES_JUGADOR.length];
@@ -24,6 +35,9 @@ export class UIControlsView {
   constructor() {
     this.coloresPorConexion = new Map();
     this._callbacks = {};
+    this.onMostrarEspera = null;
+    this.onCerrarEspera = null;
+    this.maxJugadores = 4;
   }
 
   _swal() {
@@ -41,7 +55,7 @@ export class UIControlsView {
     return COLORES_JUGADOR[numero - 1] || '#fbbf24';
   }
 
-  // ===== SALA DE ESPERA (overlay propio) =====
+  // ===== SALA DE ESPERA (pantalla independiente dentro de la SPA) =====
 
   mostrarEspera({ codigo, esHost, puedeIniciar, maxJugadores, alIniciar, alSalir } = {}) {
     const overlay = document.getElementById('overlay-espera');
@@ -50,6 +64,8 @@ export class UIControlsView {
     const elSalir = document.getElementById('btn-espera-salir');
     const elNota = document.getElementById('espera-nota');
     const elCopiar = document.getElementById('btn-copiar-codigo');
+
+    this.maxJugadores = maxJugadores || 4;
 
     if (elCodigo) elCodigo.textContent = codigo;
     if (elNota) {
@@ -60,32 +76,23 @@ export class UIControlsView {
     if (elIniciar) {
       elIniciar.classList.toggle('hidden', !esHost);
       elIniciar.disabled = esHost ? !puedeIniciar : true;
-      if (esHost) {
-        elIniciar.onclick = () => {
-          if (alIniciar) alIniciar();
-        };
-      } else {
-        elIniciar.onclick = null;
-      }
+      elIniciar.onclick = esHost && alIniciar ? () => alIniciar() : null;
     }
     if (elSalir) {
-      elSalir.onclick = () => {
-        if (alSalir) alSalir();
-      };
+      elSalir.onclick = () => { if (alSalir) alSalir(); };
     }
     if (elCopiar) {
-      elCopiar.onclick = () => {
-        try {
-          navigator.clipboard.writeText(codigo || '');
-          elCopiar.textContent = '✓ Copiado';
-          setTimeout(() => { elCopiar.textContent = '📋 Copiar'; }, 1500);
-        } catch (e) { /* sin portapapeles */ }
+      elCopiar.onclick = async () => {
+        const ok = await this._copiarCodigo(codigo);
+        elCopiar.textContent = ok ? '✓ Código copiado' : 'No se pudo copiar';
+        if (ok) setTimeout(() => { elCopiar.textContent = '📋 Copiar / invitar'; }, 1600);
       };
     }
 
-    this._actualizarListaEspera(jugadoresDeEspera());
+    this._actualizarListaEspera([], this.maxJugadores);
 
     if (overlay) overlay.classList.remove('hidden');
+    if (typeof this.onMostrarEspera === 'function') this.onMostrarEspera();
   }
 
   actualizarEspera({ codigo, jugadores, esHost, puedeIniciar, maxJugadores } = {}) {
@@ -94,10 +101,12 @@ export class UIControlsView {
     const elIniciar = document.getElementById('btn-espera-iniciar');
     const elNota = document.getElementById('espera-nota');
 
+    this.maxJugadores = maxJugadores || this.maxJugadores || 4;
+
     if (elCodigo && codigo) elCodigo.textContent = codigo;
     if (elNota) {
       const conectados = (jugadores || []).length;
-      const max = maxJugadores || 4;
+      const max = this.maxJugadores;
       elNota.textContent = conectados >= max
         ? 'Sala llena: máxima capacidad alcanzada.'
         : esHost
@@ -107,34 +116,80 @@ export class UIControlsView {
     if (elIniciar) {
       elIniciar.disabled = !(esHost && puedeIniciar);
     }
-    this._actualizarListaEspera(jugadores || []);
+    this._actualizarListaEspera(jugadores || [], this.maxJugadores);
 
     if (overlay) overlay.classList.remove('hidden');
+    if (typeof this.onMostrarEspera === 'function') this.onMostrarEspera();
   }
 
-  _actualizarListaEspera(jugadores) {
+  async _copiarCodigo(codigo) {
+    const valor = String(codigo || '');
+    if (!valor) return false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(valor);
+        return true;
+      }
+    } catch (e) { /* método alternativo */ }
+    try {
+      const temporal = document.createElement('textarea');
+      temporal.value = valor;
+      temporal.style.position = 'fixed';
+      temporal.style.opacity = '0';
+      document.body.appendChild(temporal);
+      temporal.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(temporal);
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _actualizarListaEspera(jugadores, maxJugadores = 4) {
     const lista = document.getElementById('espera-jugadores');
     if (!lista) return;
     lista.innerHTML = '';
-    if (!jugadores || jugadores.length === 0) {
-      const vacio = document.createElement('li');
-      vacio.className = 'lista-vacia';
-      vacio.textContent = 'Aún no hay jugadores en esta sala.';
-      lista.appendChild(vacio);
-      return;
-    }
-    for (const jugador of jugadores) {
+
+    const conectados = Array.isArray(jugadores) ? jugadores.slice(0, maxJugadores) : [];
+    for (const jugador of conectados) {
       const li = document.createElement('li');
-      li.className = 'fila-espera';
+      li.className = 'fila-espera' + (jugador.esHost ? ' host' : '');
+
       const avatar = document.createElement('span');
       avatar.className = 'avatar-espera';
-      avatar.style.background = jugador.color || '#fbbf24';
-      avatar.textContent = jugador.numero || '?';
+      avatar.style.background = jugador.color || '#e0b64f';
+      const numero = Number(jugador.numero) || 1;
+      avatar.textContent = jugador.avatar || AVATARES[(numero - 1) % AVATARES.length];
+      if (jugador.esHost) {
+        const corona = document.createElement('span');
+        corona.className = 'corona';
+        corona.textContent = '👑';
+        avatar.appendChild(corona);
+      }
+
       const nombre = document.createElement('span');
       nombre.className = 'nombre-espera';
-      nombre.textContent = (jugador.esHost ? '👑 ' : '') + (jugador.nombre || 'Jugador');
-      li.appendChild(avatar);
-      li.appendChild(nombre);
+      nombre.textContent = jugador.nombre || 'Jugador';
+
+      const estado = document.createElement('span');
+      estado.className = 'estado-espera' + (jugador.conectado === false ? ' desconectado' : '');
+      estado.textContent = jugador.conectado === false
+        ? 'Desconectado'
+        : jugador.esHost ? 'Anfitrión' : 'Conectado';
+
+      li.append(avatar, nombre, estado);
+      lista.appendChild(li);
+    }
+
+    const espacios = Math.max(0, maxJugadores - conectados.length);
+    for (let i = 0; i < espacios; i++) {
+      const li = document.createElement('li');
+      li.className = 'slot-vacio';
+      const circulo = document.createElement('span');
+      circulo.className = 'circulo-vacio';
+      circulo.textContent = '+';
+      li.append(circulo, document.createTextNode('Espacio libre'));
       lista.appendChild(li);
     }
   }
@@ -142,14 +197,17 @@ export class UIControlsView {
   cerrarEspera() {
     const overlay = document.getElementById('overlay-espera');
     if (overlay) overlay.classList.add('hidden');
+    if (typeof this.onCerrarEspera === 'function') this.onCerrarEspera();
   }
 
   cerrarModales() {
     this.cerrarEspera();
+    this._reconexionAbierta = false;
     const swal = this._swal();
-    if (swal && swal.isVisible()) {
-      swal.close();
-    }
+    // Llamar a close() sin comprobar isVisible(): si la conexión se abre
+    // mientras SweetAlert todavía está montando el modal, isVisible() es
+    // false y el aviso "Conectando…" quedaría tapando la partida.
+    if (swal) swal.close();
   }
 
   esperandoConexion(codigo, mensaje) {
@@ -243,18 +301,20 @@ export class UIControlsView {
   notificarVictoria(nombreJugador, numero, color, descripcion) {
     const swal = this._swal();
     if (!swal) return;
-    const porTipo = (d) => d === undefined ? '' : d;
+    const nombreSeguro = escaparHtml(nombreJugador || 'Jugador');
+    const colorSeguro = /^#[0-9a-fA-F]{3,8}$/.test(String(color || '')) ? color : '#e0b64f';
+    const porTipo = (d) => escaparHtml(d === undefined ? '' : d);
     return swal.fire({
       icon: 'success',
       title: `${nombreJugador} cantó 4-4-3`,
       html: [
-        `<div class="flex flex-col items-center gap-2">`,
-        `<div class="w-14 h-14 rounded-full grid place-items-center text-2xl font-black text-emerald-950" style="background:${color}">${numero}</div>`,
-        `<p class="text-slate-700">🎉 ¡Felicidades, ${nombreJugador}! Organizaste tus 11 cartas en:</p>`,
-        `<div class="text-left text-sm space-y-1 w-full max-w-xs">`,
-        ...(descripcion || []).map((d) => `<div class="bg-slate-100 rounded-lg px-3 py-2 text-emerald-700">${porTipo(d)}</div>`),
-        `</div>`,
-        `</div>`,
+        '<div class="swal-panel">',
+        `<div class="swal-avatar" style="background:${colorSeguro}">${escaparHtml(numero)}</div>`,
+        `<p>🎉 ¡Felicidades, ${nombreSeguro}! Organizaste tus 11 cartas en:</p>`,
+        '<div class="swal-grupos">',
+        ...(descripcion || []).map((d) => `<div class="swal-grupo">${porTipo(d)}</div>`),
+        '</div>',
+        '</div>',
       ].join(''),
       showConfirmButton: true,
       confirmButtonText: 'Continuar',
@@ -292,11 +352,11 @@ export class UIControlsView {
     return swal.fire({
       title: '📖 ¿Cómo jugar 4-4-3?',
       html: [
-        '<div class="text-left text-sm space-y-2 max-h-72 overflow-y-auto pr-2">',
+        '<div class="swal-reglas">',
         '<p><b>1.</b> Cada jugador recibe <b>10 cartas</b>. El resto forma el mazo y se voltea una carta al descarte.</p>',
         '<p><b>2.</b> En tu turno debes <b>robar 1 carta</b> (del mazo o del pozo de descarte), quedando con 11 cartas.</p>',
         '<p><b>3.</b> Ganas si tus 11 cartas forman un <b>4-4-3</b>: tres grupos de 4, 4 y 3 cartas <b>del mismo número</b> (en cualquier orden: 4-4-3, 4-3-4 o 3-4-4).</p>',
-        '<ul class="list-disc pl-5">',
+        '<ul>',
         '<li><b>Grupo de 4:</b> cuatro cartas del mismo número.</li>',
         '<li><b>Grupo de 3:</b> tres cartas del mismo número.</li>',
         '<li>El <b>palo</b> (♠ ♥ ♦ ♣) no importa.</li>',
@@ -337,8 +397,4 @@ export class UIControlsView {
       allowOutsideClick: false,
     });
   }
-}
-
-export function jugadoresDeEspera() {
-  return [];
 }
