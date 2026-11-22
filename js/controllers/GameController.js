@@ -352,9 +352,9 @@ export class GameController {
 
   // ===== SALAS PÚBLICAS =====
 
-  prospectarSalasPublicas(codigos) {
+  prospectarSalasPublicas(codigos, alProgreso) {
     const sonda = new PeerNetwork();
-    return sonda.prospectarSalas(codigos, 8000);
+    return sonda.prospectarSalas(codigos, 8000, alProgreso);
   }
 
   async entrarSalaPublica(codigo, nombre) {
